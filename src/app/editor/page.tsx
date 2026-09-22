@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { useProjectStore } from "@/lib/store/project";
 import { ChapterList } from "@/components/editor/ChapterList";
 import { ChapterEditor } from "@/components/editor/ChapterEditor";
@@ -10,7 +10,7 @@ import { CoverUpload } from "@/components/editor/CoverUpload";
 import { ExportBar } from "@/components/editor/ExportBar";
 import { AIPanel } from "@/components/ai/AIPanel";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Plus, BookOpen, Feather } from "lucide-react";
+import { Plus, BookOpen, Feather, Loader2 } from "lucide-react";
 
 export default function EditorPage() {
   const {
@@ -25,11 +25,33 @@ export default function EditorPage() {
   const [showMeta, setShowMeta] = useState(false);
   const [showAI, setShowAI] = useState(false);
 
+  // State now lives in IndexedDB, which hydrates asynchronously after
+  // mount — gate the UI on it so the empty state never flashes and the
+  // auto-load below always runs against restored data.
+  // useSyncExternalStore subscribes to persist's hydration-finished event;
+  // `onFinishHydration` already matches the subscribe/unsubscribe contract.
+  const hydrated = useSyncExternalStore(
+    useProjectStore.persist.onFinishHydration,
+    () => useProjectStore.persist.hasHydrated(),
+    // Server snapshot: the gate renders during SSR; content streams in
+    // once the client store finishes hydrating.
+    () => false
+  );
+
   useEffect(() => {
     if (!project && projects.length > 0) {
       loadProject(projects[projects.length - 1].id);
     }
   }, [project, projects, loadProject]);
+
+  if (!hydrated) {
+    return (
+      <div className="container flex items-center justify-center gap-2 py-32 text-muted-foreground">
+        <Loader2 className="size-5 animate-spin text-brass" aria-hidden="true" />
+        Opening the bindery…
+      </div>
+    );
+  }
 
   if (!project) {
     return (

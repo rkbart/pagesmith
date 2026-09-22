@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
+import { idbStorage } from "./idb-storage";
 import type { Project, Chapter, BookMetadata, BookCover, TOCEntry } from "@/types/project";
 
 function generateId(): string {
@@ -250,7 +251,7 @@ export const useProjectStore = create<ProjectState>()(
     }),
     {
       name: "pagesmith-projects",
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => idbStorage),
       partialize: (state) => ({
         projects: state.projects,
         project: state.project,

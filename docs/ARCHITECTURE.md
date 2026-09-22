@@ -36,13 +36,17 @@ Settings (src/app/settings/page.tsx)
 
 ## State
 
-- Single Zustand store (`useProjectStore`) with `persist` middleware → localStorage.
+- Single Zustand store (`useProjectStore`) with `persist` middleware → IndexedDB
+  (`pagesmith-db` via `src/lib/store/idb-storage.ts`; first run adopts legacy
+  `localStorage["pagesmith-projects"]`). The editor gates on
+  `persist.hasHydrated()` because IDB hydrates asynchronously.
 - `partialize` persists `projects`, `project`, `activeChapterId` only.
-- AI settings stored separately under `pagesmith-ai-settings`.
+- AI settings stored separately under `pagesmith-ai-settings` (localStorage —
+  tiny, read synchronously). Theme likewise.
 
 ## Routing
 
-- `/` landing (Hero, FormatCards, FeatureShowcase, AISection)
+- `/` landing (Hero, ProcessPipeline, FormatStrip, FeatureBento, AIBand, FinalCta)
 - `/convert` format hub
 - `/convert/[format]` dynamic parse page (pdf, docx, markdown, html, txt, epub)
 - `/editor` multi-chapter editor

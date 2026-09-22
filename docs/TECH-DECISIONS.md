@@ -4,7 +4,7 @@
 Industry standard, free Vercel hosting, RSC where useful, Turbopack fast builds. App chosen over Pages for layouts/metadata API.
 
 ## Why no backend / DB / auth
-Privacy pitch ("files never leave your device") + zero ops cost. Zustand persist → localStorage is enough for a single-user tool.
+Privacy pitch ("files never leave your device") + zero ops cost. Zustand persist → IndexedDB (idb adapter) is enough for a single-user tool; no server DB, no accounts.
 
 ## Why Zustand (not Redux/Context)
 Tiny API, first-class `persist` middleware, no boilerplate. One store is sufficient.
@@ -33,7 +33,7 @@ No API costs for us, no key management, user controls spend/data. Matches "free 
 BuyMeACoffee (https://www.buymeacoffee.com/rkbart) — no paywall, no accounts.
 
 ## Known tradeoffs
-- localStorage ~5MB limit → large books with covers may need IndexedDB (`idb` already a dep)
+- Persistence: projects moved from localStorage (~5MB ceiling) to IndexedDB via the `idb` adapter (`src/lib/store/idb-storage.ts`), with a one-time migration that adopts legacy localStorage data. SQLite/OPFS (sqlocal + Drizzle, as in invoice-app) is deliberately deferred — scaffold in `docs/SQLITE-PHASE-2.md`; revisit when cross-project search or library backup/export is wanted.
 - Browser-mode AI translation is a stub until Transformers.js is wired
 - `document.execCommand` in the editor is deprecated but still the simplest contenteditable path
 - 2 npm audit vulnerabilities (1 moderate, 1 high) unresolved

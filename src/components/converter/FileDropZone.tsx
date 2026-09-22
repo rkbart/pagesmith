@@ -6,23 +6,43 @@ import { FileUp } from "lucide-react";
 interface FileDropZoneProps {
   accept: string;
   onFile: (file: File) => void;
+  /** When `multiple` is set, batches are delivered here instead of `onFile`. */
+  onFiles?: (files: File[]) => void;
+  multiple?: boolean;
   label: string;
   disabled?: boolean;
 }
 
-export function FileDropZone({ accept, onFile, label, disabled }: FileDropZoneProps) {
+export function FileDropZone({
+  accept,
+  onFile,
+  onFiles,
+  multiple,
+  label,
+  disabled,
+}: FileDropZoneProps) {
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const deliver = useCallback(
+    (list: FileList | null) => {
+      if (!list) return;
+      const files = Array.from(list);
+      if (files.length === 0) return;
+      if (multiple && onFiles) onFiles(files);
+      else onFile(files[0]);
+    },
+    [multiple, onFiles, onFile]
+  );
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
       setDragOver(false);
       if (disabled) return;
-      const file = e.dataTransfer.files[0];
-      if (file) onFile(file);
+      deliver(e.dataTransfer.files);
     },
-    [onFile, disabled]
+    [deliver, disabled]
   );
 
   const formatList = accept.replace(/\./g, "").replace(/,/g, ", ");
@@ -69,10 +89,10 @@ export function FileDropZone({ accept, onFile, label, disabled }: FileDropZonePr
         ref={inputRef}
         type="file"
         accept={accept}
+        multiple={multiple}
         className="hidden"
         onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) onFile(file);
+          deliver(e.target.files);
           e.target.value = "";
         }}
       />
