@@ -5,6 +5,8 @@ import { GripVertical, Trash2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 
+const LEVEL_INDENT: Record<number, string> = { 1: "pl-4", 2: "pl-6", 3: "pl-8", 4: "pl-10", 5: "pl-12", 6: "pl-14" };
+
 export function ChapterList() {
   const { project, activeChapterId, setActiveChapter, removeChapter, reorderChapters, addChapter } =
     useProjectStore();
@@ -52,7 +54,7 @@ export function ChapterList() {
               : "border-transparent hover:bg-muted"
           } ${overIndex === index && dragIndex !== null ? "border-primary border-dashed" : ""} ${
             dragIndex === index ? "opacity-50" : ""
-          }`}
+          } ${LEVEL_INDENT[chapter.level] ?? "pl-4"}`}
         >
           <GripVertical className="h-4 w-4 text-muted-foreground/50 shrink-0 cursor-grab" />
           <div className="flex-1 min-w-0">

@@ -1,4 +1,16 @@
 /* Global styles */
+:root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -12,6 +24,9 @@ body {
 }
 
 /* Prose styles for EPUB content preview */
+.prose {
+  max-width: 70ch;
+}
 .prose h1,
 .prose h2,
 .prose h3 {

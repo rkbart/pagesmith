@@ -207,33 +207,35 @@ export default function SettingsPage() {
           </div>
         </Card>
 
-        <Card className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="font-semibold">Current Mode</h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                {settings.provider === "browser"
-                  ? "Running locally — no data leaves your device"
-                  : `Using ${settings.provider} API with your key`}
-              </p>
+        <div className="border-t pt-6 space-y-6">
+          <Card className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold">Current Mode</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {settings.provider === "browser"
+                    ? "Running locally — no data leaves your device"
+                    : `Using ${settings.provider} API with your key`}
+                </p>
+              </div>
+              <Badge variant={settings.provider === "browser" ? "secondary" : "default"}>
+                {settings.provider === "browser" ? "🔒 Local" : "🌐 API"}
+              </Badge>
             </div>
-            <Badge variant={settings.provider === "browser" ? "secondary" : "default"}>
-              {settings.provider === "browser" ? "🔒 Local" : "🌐 API"}
-            </Badge>
-          </div>
-        </Card>
+          </Card>
 
-        <Button onClick={save} size="lg" className="w-full">
-          {saved ? (
-            <>
-              <CheckCircle2 className="mr-2 h-4 w-4" /> Saved!
-            </>
-          ) : (
-            <>
-              <Save className="mr-2 h-4 w-4" /> Save Settings
-            </>
-          )}
-        </Button>
+          <Button onClick={save} size="lg">
+            {saved ? (
+              <>
+                <CheckCircle2 className="mr-2 h-4 w-4" /> Saved!
+              </>
+            ) : (
+              <>
+                <Save className="mr-2 h-4 w-4" /> Save Settings
+              </>
+            )}
+          </Button>
+        </div>
 
         <div className="text-center pt-4">
           <p className="text-sm text-muted-foreground mb-2">

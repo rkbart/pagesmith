@@ -94,16 +94,6 @@ export default function EditorPage() {
         </aside>
 
         <div className="min-w-0">
-          {showMeta && (
-            <div className="mb-6">
-              <MetadataForm />
-            </div>
-          )}
-          {showAI && (
-            <div className="mb-6">
-              <AIPanel />
-            </div>
-          )}
           {activeChapter ? (
             <ChapterEditor chapter={activeChapter} />
           ) : (
@@ -112,6 +102,16 @@ export default function EditorPage() {
               <Button variant="outline" onClick={() => addChapter()}>
                 <Plus className="mr-2 h-4 w-4" /> Add First Chapter
               </Button>
+            </div>
+          )}
+          {showMeta && (
+            <div className="mt-6">
+              <MetadataForm />
+            </div>
+          )}
+          {showAI && (
+            <div className="mt-6">
+              <AIPanel />
             </div>
           )}
         </div>

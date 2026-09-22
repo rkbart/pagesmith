@@ -130,7 +130,7 @@ export function Hero() {
           </Link>
         </div>
 
-        <div className="mt-12 flex items-center justify-center gap-8 text-sm text-muted-foreground">
+        <div className="mt-12 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
           <div className="flex items-center gap-2">
             <ShieldCheck className="h-4 w-4 text-green-500" />
             Files stay local

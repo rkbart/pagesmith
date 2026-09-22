@@ -96,7 +96,7 @@ export function ChapterEditor({ chapter }: { chapter: Chapter }) {
         </Select>
       </div>
 
-      <div className="flex flex-wrap items-center gap-1 rounded-md border p-2">
+      <div className="flex flex-wrap items-center gap-2 rounded-md border p-2">
         {TOOLBAR_BUTTONS.map((btn) => (
           <button
             key={btn.command}

@@ -44,18 +44,21 @@ export function FeatureShowcase() {
             professional ebook without leaving your browser.
           </p>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {features.map((feature) => (
-            <div key={feature.title} className="flex gap-4">
-              <div className="shrink-0 rounded-lg bg-primary/10 p-3">
-                <feature.icon className="h-6 w-6 text-primary" />
+        <div className="space-y-3">
+          {features.map((f) => {
+            const Icon = f.icon;
+            return (
+              <div key={f.title} className="flex items-start gap-4 p-4 rounded-lg hover:bg-muted/30 transition-colors">
+                <div className="shrink-0 rounded-lg bg-primary/10 p-3">
+                  <Icon className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-semibold">{f.title}</h3>
+                  <p className="text-sm text-muted-foreground mt-1">{f.description}</p>
+                </div>
               </div>
-              <div>
-                <h3 className="font-semibold">{feature.title}</h3>
-                <p className="text-sm text-muted-foreground mt-1">{feature.description}</p>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </section>

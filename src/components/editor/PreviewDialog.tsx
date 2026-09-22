@@ -9,6 +9,8 @@ import {
 } from "@/components/ui/dialog";
 import { useState } from "react";
 
+const LEVEL_INDENT: Record<number, string> = { 1: "pl-4", 2: "pl-6", 3: "pl-8", 4: "pl-10", 5: "pl-12", 6: "pl-14" };
+
 export function PreviewDialog({
   open,
   onOpenChange,
@@ -43,8 +45,7 @@ export function PreviewDialog({
                   onClick={() => setActiveTab(i)}
                   className={`text-left text-sm px-2 py-1 rounded truncate ${
                     activeTab === i ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted"
-                  }`}
-                  style={{ paddingLeft: `${ch.level * 8}px` }}
+                  } ${LEVEL_INDENT[ch.level] ?? "pl-4"}`}
                 >
                   {ch.title}
                 </button>

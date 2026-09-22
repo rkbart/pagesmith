@@ -60,22 +60,24 @@ export function AISection() {
             OpenAI or Anthropic API key — your key, your data, your control.
           </p>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="space-y-3">
           {aiFeatures.map((feature) => (
             <div
               key={feature.title}
-              className="rounded-xl border p-6 hover:shadow-md transition-shadow"
+              className="flex items-start gap-4 p-4 rounded-lg hover:bg-muted/30 transition-colors"
             >
-              <div className="flex items-start justify-between mb-3">
-                <div className="rounded-lg bg-primary/10 p-2">
-                  <feature.icon className="h-5 w-5 text-primary" />
-                </div>
-                <Badge variant="outline" className="text-xs">
-                  {feature.badge}
-                </Badge>
+              <div className="shrink-0 rounded-lg bg-primary/10 p-2">
+                <feature.icon className="h-5 w-5 text-primary" />
               </div>
-              <h3 className="font-semibold">{feature.title}</h3>
-              <p className="text-sm text-muted-foreground mt-1">{feature.description}</p>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="font-semibold">{feature.title}</h3>
+                  <Badge variant="outline" className="text-xs">
+                    {feature.badge}
+                  </Badge>
+                </div>
+                <p className="text-sm text-muted-foreground mt-1">{feature.description}</p>
+              </div>
             </div>
           ))}
         </div>
