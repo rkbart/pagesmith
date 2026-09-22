@@ -19,8 +19,15 @@ Failed files are skipped and reported per row.
 
 ## Library (`/library`)
 
-- Card shelf of every book, newest first (cover art or a typeset placeholder)
-- Open in the editor, open in the reading room, or delete (with confirmation)
+- Card or list shelf of every book, newest first — toggle with the
+  `LayoutGrid` / `List` segmented control; the choice persists in
+  `localStorage["pagesmith-library-view"]` (`src/lib/utils/library-prefs.ts`)
+- Real cover art, or a monogram placeholder (`CoverArt`): a serif initial on
+  a paper-to-secondary gradient with brass rules — the book title is printed
+  exactly once per card/row (as the heading), so cover-less books no longer
+  look like they render the title twice
+- Open in the editor, open in the reading room, or delete via the shared
+  `DeleteProjectDialog` (chapter count + cover note, destructive confirm)
 - "New book" tile creates a blank project and drops you in the editor
 - Empty state routes to the import desk or a blank book
 
@@ -46,23 +53,6 @@ Failed files are skipped and reported per row.
 
 - EPUB 3 generation (JSZip): mimetype, container.xml, content.opf, nav.xhtml, styles.css, chapter XHTML, optional cover
 - One-click Blob download
-
-## EPUB Checker
-
-`/check` validates: mimetype, container.xml, OPF parse, required metadata, manifest/spine integrity, nav document, chapter XHTML parse, external links.
-
-## AI (hybrid)
-
-- Readability scoring (offline, Flesch-Kincaid)
-- Translation, editing, summaries, chapter detection, consistency analysis (API or stub)
-- BYOK OpenAI / Anthropic via Settings
-- Browser-mode placeholder for free/local use
-
-## Other
-
-- Free, no account, no server upload of files
-- BuyMeACoffee link: https://www.buymeacoffee.com/rkbart
-- Responsive, dark-mode ready (shadcn/Tailwind v4)
 
 ## EPUB Checker
 

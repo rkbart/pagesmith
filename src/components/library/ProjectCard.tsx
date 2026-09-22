@@ -2,37 +2,11 @@
 
 import { useState } from "react";
 import { BookOpen, Pencil, Trash2 } from "lucide-react";
+import { CoverArt } from "./CoverArt";
+import { DeleteProjectDialog } from "./DeleteProjectDialog";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { formatUpdated } from "@/lib/utils/text";
 import type { Project } from "@/types/project";
-
-const MINUTE = 60_000;
-const HOUR = 3_600_000;
-const DAY = 86_400_000;
-
-function formatUpdated(ts: number): string {
-  const diff = Date.now() - ts;
-  if (diff < MINUTE) return "moments ago";
-  if (diff < HOUR) return `${Math.floor(diff / MINUTE)} min ago`;
-  if (diff < DAY) return `${Math.floor(diff / HOUR)} h ago`;
-  if (diff < 7 * DAY) return `${Math.floor(diff / DAY)} d ago`;
-  return new Date(ts).toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
-
-function chapterLabel(count: number): string {
-  return `${count} chapter${count === 1 ? "" : "s"}`;
-}
 
 export function ProjectCard({
   project,
@@ -59,27 +33,7 @@ export function ProjectCard({
         aria-label={`Edit ${title}`}
         className="relative block aspect-[3/4] w-24 shrink-0 overflow-hidden bg-secondary text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50 sm:w-full"
       >
-        {project.cover ? (
-          // Cover art is a user-supplied data URL: next/image adds nothing here.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={project.cover.data}
-            alt=""
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          <span className="flex h-full flex-col items-center justify-center gap-2 bg-linear-to-b from-paper to-secondary p-2 text-center sm:gap-3 sm:p-5">
-            <span className="rule-brass hidden sm:block" />
-            <span className="font-heading line-clamp-3 text-xs leading-snug text-foreground sm:line-clamp-4 sm:text-lg">
-              {title}
-            </span>
-            {author && (
-              <span className="eyebrow hidden max-w-full truncate sm:block">
-                {author}
-              </span>
-            )}
-          </span>
-        )}
+        <CoverArt project={project} />
         <span className="absolute right-1.5 bottom-1.5 rounded-full border bg-background/85 px-1.5 py-0.5 text-[0.65rem] text-muted-foreground backdrop-blur sm:right-2.5 sm:bottom-2.5 sm:px-2 sm:text-xs">
           {project.chapters.length} ch.
         </span>
@@ -130,33 +84,12 @@ export function ProjectCard({
         </div>
       </div>
 
-      <Dialog open={confirming} onOpenChange={setConfirming}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete “{title}”?</DialogTitle>
-            <DialogDescription>
-              {chapterLabel(project.chapters.length)}
-              {project.cover ? " and its cover" : ""} will be removed from this
-              device. This can&apos;t be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirming(false)}>
-              Keep it
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => {
-                onDelete(project.id);
-                setConfirming(false);
-              }}
-            >
-              <Trash2 />
-              Delete book
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteProjectDialog
+        project={project}
+        open={confirming}
+        onOpenChange={setConfirming}
+        onConfirm={onDelete}
+      />
     </article>
   );
 }

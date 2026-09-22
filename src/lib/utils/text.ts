@@ -44,3 +44,28 @@ export function formatFileSize(bytes: number): string {
 export function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+const MINUTE = 60_000;
+const HOUR = 3_600_000;
+const DAY = 86_400_000;
+
+/**
+ * Human-friendly "when was this last touched", for book cards and rows.
+ * Recent edits read as durations; anything older than a week gets a date.
+ */
+export function formatUpdated(timestamp: number): string {
+  const diff = Date.now() - timestamp;
+  if (diff < MINUTE) return "moments ago";
+  if (diff < HOUR) return `${Math.floor(diff / MINUTE)} min ago`;
+  if (diff < DAY) return `${Math.floor(diff / HOUR)} h ago`;
+  if (diff < 7 * DAY) return `${Math.floor(diff / DAY)} d ago`;
+  return new Date(timestamp).toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+export function chapterLabel(count: number): string {
+  return `${count} chapter${count === 1 ? "" : "s"}`;
+}

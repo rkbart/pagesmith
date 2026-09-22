@@ -1,34 +1,55 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 import { Moon, Sun } from "lucide-react";
 
 const STORAGE_KEY = "pagesmith-theme";
 
-function getInitialDark(): boolean {
-  if (typeof window === "undefined") return false;
-  const stored = localStorage.getItem(STORAGE_KEY);
-  if (stored) return stored === "dark";
-  return window.matchMedia("(prefers-color-scheme: dark)").matches;
+/**
+ * The theme is applied to `<html class="dark">` by the boot script in the root
+ * layout, before first paint. React therefore doesn't *own* the value — it
+ * reads it, which makes this an external store.
+ *
+ * Crucially, reading the stored theme inside a `useState` initializer would
+ * make the client's first render disagree with the server HTML (server always
+ * renders "light"), so React would discard the entire server-rendered tree and
+ * rebuild it on the client. `useSyncExternalStore` avoids that: React uses
+ * `getServerSnapshot` while hydrating, then switches to the live DOM value.
+ *
+ * Subscribing to `<html>`'s class also keeps the button honest when something
+ * else changes the theme (another tab via the `storage` event, devtools, etc).
+ */
+function subscribe(onStoreChange: () => void) {
+  const observer = new MutationObserver(onStoreChange);
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["class"],
+  });
+  return () => observer.disconnect();
+}
+
+function getSnapshot(): boolean {
+  return document.documentElement.classList.contains("dark");
+}
+
+/** Must match what the server rendered, i.e. the light-mode button. */
+function getServerSnapshot(): boolean {
+  return false;
 }
 
 export function ThemeToggle() {
-  const [dark, setDark] = useState(getInitialDark);
+  const dark = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
-  // Sync the DOM theme class (external system) with React state.
-  useEffect(() => {
-    document.documentElement.classList.toggle("dark", dark);
-  }, [dark]);
-
-  const toggle = () => {
+  const toggle = useCallback(() => {
     const next = !dark;
-    setDark(next);
+    // The DOM is the source of truth; the observer above re-renders us.
+    document.documentElement.classList.toggle("dark", next);
     try {
       localStorage.setItem(STORAGE_KEY, next ? "dark" : "light");
     } catch {
       // storage unavailable — theme still applies for this session
     }
-  };
+  }, [dark]);
 
   return (
     <button

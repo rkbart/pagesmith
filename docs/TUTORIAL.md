@@ -1,12 +1,25 @@
 # Tutorial
 
-## 1. Convert a file to EPUB
+## 1. Convert a file (or several) to EPUB
 
-1. Go to `/convert` or drop a file on the homepage.
-2. Pick a source format (PDF, DOCX, Markdown, HTML, TXT, EPUB).
-3. Drop/select the file. PageSmith parses it and shows detected chapters.
+1. Go to `/convert` or drop files on the homepage.
+2. Pick a source format (PDF, DOCX, Markdown, HTML, TXT, EPUB) — or drop a
+   mix on the Import desk, which detects each file and routes single files
+   to their parse page.
+3. Drop/select the file(s). PageSmith parses them and shows detected chapters;
+   multiple files are merged into one book in natural filename order.
 4. Review warnings, expand chapters to preview.
-5. Click **Open in Editor**.
+5. Click **Open in Editor** (single file) or **Open in the studio** (merged queue).
+
+## 1b. Manage your books
+
+On `/library` every book sits on a shelf, newest first:
+
+- Switch between **card** and **list** layouts with the segmented control in
+  the header — the choice is remembered on this device.
+- **Read** opens the reading room (it resumes the page you stopped on),
+  **Edit** opens the studio, the trash icon deletes (with confirmation).
+- The **New book / Start a new book** tile creates a blank project.
 
 ## 2. Edit your book
 
@@ -29,9 +42,12 @@ On `/editor`:
 
 Configure keys at `/settings` (OpenAI or Anthropic BYOK).
 
-## 4. Preview
+## 4. Read
 
-Click **Preview** to read the book with a TOC sidebar before export.
+Click **Read** (editor top bar, or any shelf item) to open the reading room:
+chapter sheet with a contents rail (drawer on mobile), prev/next buttons and
+arrow keys, a progress bar, and type controls (three sizes, serif/sans) that
+persist. Your place is bookmarked per book — reopening resumes the page.
 
 ## 5. Export
 

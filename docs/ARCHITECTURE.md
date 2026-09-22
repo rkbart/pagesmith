@@ -13,8 +13,12 @@ File drop / picker
     → persisted to IndexedDB ("pagesmith-db" / store "kv")
 
 Library (src/app/library/page.tsx)
-  → lists every project, newest first
-  → loadProject(id) → Editor or Reading Room;  deleteProject(id)
+  → shelf of every project, newest first
+  → `LayoutGrid`/`List` view toggle (persisted via src/lib/utils/library-prefs.ts)
+  → `ProjectCard` / `ProjectRow`, both with `CoverArt` (real cover or
+     monogram placeholder — the title prints exactly once, as the heading)
+  → loadProject(id) → Editor or Reading Room;  deleteProject(id) via shared
+     `DeleteProjectDialog`
   → clears the book's reading bookmark (src/lib/utils/reading-progress.ts)
 
 Editor (src/app/editor/page.tsx)
@@ -37,7 +41,7 @@ Settings (src/app/settings/page.tsx)
 | Layer | Location | Responsibility |
 |---|---|---|
 | Routes | `src/app/**` | Page shells, routing, layout |
-| Components | `src/components/**` | UI (landing, editor, converter, ai, shared, ui) |
+| Components | `src/components/**` | UI (landing, library, editor, converter, reader, ai, shared, ui) |
 | Hooks | `src/hooks/**` | `useParser`, `useExport` orchestration |
 | Domain lib | `src/lib/**` | parsers, epub generate/validate, ai, store, utils |
 | Types | `src/types/**` | `project.ts`, `epub.ts`, `ai.ts`, `mammoth.d.ts` |
@@ -52,7 +56,8 @@ Settings (src/app/settings/page.tsx)
 - AI settings stored separately under `pagesmith-ai-settings` (localStorage —
   tiny, read synchronously). Theme likewise. Reading bookmarks and reader
   typography live in localStorage too (`pagesmith-reading-progress`,
-  `pagesmith-reader-prefs`).
+  `pagesmith-reader-prefs`), as does the library's cards/list layout choice
+  (`pagesmith-library-view`).
 - Async hydration is gated in the UI via `useProjectHydrated()`
   (`src/hooks/useHydrated.ts`) — `/editor`, `/library`, `/read` render a
   loading state until `persist.hasHydrated()` is true.
@@ -62,7 +67,7 @@ Settings (src/app/settings/page.tsx)
 - `/` landing (Hero, ProcessPipeline, FormatStrip, FeatureBento, AIBand, FinalCta)
 - `/convert` import desk (single or multi-file → merged book)
 - `/convert/[format]` dynamic parse page (pdf, docx, markdown, html, txt, epub)
-- `/library` shelf of every book (open, read, delete)
+- `/library` shelf of every book (cards/list toggle, open, read, delete)
 - `/editor` multi-chapter editor
 - `/read` reading room for the active (or most recent) book
 - `/check` EPUB validator

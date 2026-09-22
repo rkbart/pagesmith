@@ -1,19 +1,41 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BookOpen, Feather, Loader2, Plus, Upload } from "lucide-react";
+import {
+  BookOpen,
+  Feather,
+  LayoutGrid,
+  List,
+  Loader2,
+  Plus,
+  Upload,
+} from "lucide-react";
 import { ProjectCard } from "@/components/library/ProjectCard";
+import { ProjectRow } from "@/components/library/ProjectRow";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { useProjectHydrated } from "@/hooks/useHydrated";
 import { useProjectStore } from "@/lib/store/project";
+import {
+  loadLibraryView,
+  saveLibraryView,
+  type LibraryView,
+} from "@/lib/utils/library-prefs";
 import { clearPosition } from "@/lib/utils/reading-progress";
 
 export default function LibraryPage() {
   const router = useRouter();
   const hydrated = useProjectHydrated();
   const { projects, loadProject, deleteProject, createProject } = useProjectStore();
+
+  // Reading localStorage in an initializer is safe here: everything below the
+  // hydration gate renders on the client only, so server HTML can't disagree.
+  const [view, setView] = useState<LibraryView>(() => loadLibraryView());
+
+  useEffect(() => {
+    saveLibraryView(view);
+  }, [view]);
 
   // Most recently touched book first — the shelf mirrors how people work.
   const shelf = useMemo(
@@ -80,7 +102,11 @@ export default function LibraryPage() {
   }
 
   return (
-    <div className="container mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
+    <div
+      className={`container mx-auto px-4 py-12 sm:px-6 lg:px-8 lg:py-16 ${
+        view === "list" ? "max-w-4xl" : "max-w-6xl"
+      }`}
+    >
       <div className="mb-10 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="eyebrow mb-2">The shelf</p>
@@ -90,35 +116,90 @@ export default function LibraryPage() {
             chapter{totalChapters === 1 ? "" : "s"} — all kept on this device.
           </p>
         </div>
-        <Button variant="brass" onClick={startBlank} className="shrink-0">
-          <Plus />
-          New book
-        </Button>
+
+        <div className="flex shrink-0 items-center gap-2">
+          <div
+            role="group"
+            aria-label="Shelf layout"
+            className="flex items-center gap-0.5 rounded-lg border bg-card p-0.5"
+          >
+            <Button
+              size="icon-sm"
+              variant={view === "cards" ? "secondary" : "ghost"}
+              aria-pressed={view === "cards"}
+              aria-label="Card view"
+              title="Card view"
+              onClick={() => setView("cards")}
+            >
+              <LayoutGrid />
+            </Button>
+            <Button
+              size="icon-sm"
+              variant={view === "list" ? "secondary" : "ghost"}
+              aria-pressed={view === "list"}
+              aria-label="List view"
+              title="List view"
+              onClick={() => setView("list")}
+            >
+              <List />
+            </Button>
+          </div>
+
+          <Button variant="brass" onClick={startBlank}>
+            <Plus />
+            New book
+          </Button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4">
-        {shelf.map((project) => (
-          <ProjectCard
-            key={project.id}
-            project={project}
-            onOpen={openBook}
-            onRead={readBook}
-            onDelete={deleteBook}
-          />
-        ))}
+      {view === "cards" ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4">
+          {shelf.map((project) => (
+            <ProjectCard
+              key={project.id}
+              project={project}
+              onOpen={openBook}
+              onRead={readBook}
+              onDelete={deleteBook}
+            />
+          ))}
 
-        <button
-          type="button"
-          onClick={startBlank}
-          className="flex min-h-56 flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-brass/30 bg-paper p-6 text-center text-muted-foreground transition-all hover:-translate-y-0.5 hover:border-brass/60 hover:bg-brass/5"
-        >
-          <span className="grid size-12 place-items-center rounded-xl bg-brass/10">
-            <Plus className="size-5 text-brass" aria-hidden="true" />
-          </span>
-          <span className="font-heading text-base text-foreground">Start a new book</span>
-          <span className="text-xs">Blank pages, ready to fill</span>
-        </button>
-      </div>
+          <button
+            type="button"
+            onClick={startBlank}
+            className="flex min-h-56 flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-brass/30 bg-paper p-6 text-center text-muted-foreground transition-all hover:-translate-y-0.5 hover:border-brass/60 hover:bg-brass/5"
+          >
+            <span className="grid size-12 place-items-center rounded-xl bg-brass/10">
+              <Plus className="size-5 text-brass" aria-hidden="true" />
+            </span>
+            <span className="font-heading text-base text-foreground">
+              Start a new book
+            </span>
+            <span className="text-xs">Blank pages, ready to fill</span>
+          </button>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {shelf.map((project) => (
+            <ProjectRow
+              key={project.id}
+              project={project}
+              onOpen={openBook}
+              onRead={readBook}
+              onDelete={deleteBook}
+            />
+          ))}
+
+          <button
+            type="button"
+            onClick={startBlank}
+            className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-brass/30 bg-paper p-4 text-sm text-muted-foreground transition-colors hover:border-brass/60 hover:bg-brass/5 hover:text-foreground"
+          >
+            <Plus className="size-4 text-brass" aria-hidden="true" />
+            Start a new book
+          </button>
+        </div>
+      )}
 
       <p className="mt-8 flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground">
         <BookOpen className="size-3.5 shrink-0 text-brass" aria-hidden="true" />
