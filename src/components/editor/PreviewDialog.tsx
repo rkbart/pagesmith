@@ -54,7 +54,7 @@ export function PreviewDialog({
           </nav>
 
           {/* Content */}
-          <div className="flex-1 overflow-y-auto border rounded-lg p-6 bg-white dark:bg-gray-900">
+            <div className="flex-1 overflow-y-auto border rounded-lg p-6 bg-background">
             <div
               className="prose prose-sm max-w-none dark:prose-invert"
               style={{ fontFamily: "Georgia, serif" }}

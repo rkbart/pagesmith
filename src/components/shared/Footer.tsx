@@ -14,7 +14,7 @@ export function Footer() {
             href="https://www.buymeacoffee.com/rkbart"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-primary hover:underline"
+            className="font-medium text-foreground hover:underline"
           >
             ☕ Support development
           </a>

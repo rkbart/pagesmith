@@ -60,29 +60,28 @@ export function Hero() {
 
   return (
     <section className="relative overflow-hidden">
-      <div className="container px-4 sm:px-6 lg:px-8 py-16 sm:py-24 text-center">
-        <div className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs text-muted-foreground mb-6">
+      <div className="container px-4 sm:px-6 lg:px-8 py-16 sm:py-20 text-center">
+        <div className="inline-flex items-center gap-2 rounded-none border px-3 py-1 text-xs text-muted-foreground mb-6">
           <Sparkles className="h-3 w-3" />
           Free · Local · AI-Powered
         </div>
 
-        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-6">
-          Craft Beautiful{" "}
-          <span className="text-primary">EPUB Books</span>
+        <h1 className="display mb-6">
+          Craft Beautiful EPUB Books
           <br />
           From Any Format
         </h1>
 
-        <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-10">
+        <p className="body-lg text-muted-foreground max-w-2xl mx-auto mb-10">
           Convert PDF, DOCX, Markdown, HTML, TXT, and EPUB files into clean, structured ebooks.
           Edit chapters, translate with AI, and export — all running locally in your browser.
         </p>
 
         <div
-          className={`relative max-w-xl mx-auto rounded-2xl border-2 border-dashed p-8 sm:p-12 transition-all cursor-pointer group ${
+          className={`relative max-w-xl mx-auto rounded-lg border border-dashed p-8 sm:p-12 transition-all cursor-pointer group ${
             dragOver
               ? "border-primary bg-primary/5 scale-[1.02]"
-              : "border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/30"
+              : "border-input hover:border-primary/50 hover:bg-muted/30"
           }`}
           onDragOver={(e) => {
             e.preventDefault();
@@ -107,8 +106,8 @@ export function Hero() {
           }}
         >
           <div className="flex flex-col items-center gap-4">
-            <div className="rounded-full bg-primary/10 p-4 group-hover:bg-primary/20 transition-colors">
-              <FileUp className="h-8 w-8 text-primary" />
+            <div className="rounded-lg bg-muted p-4 group-hover:bg-secondary transition-colors">
+              <FileUp className="h-8 w-8 text-foreground" />
             </div>
             <div>
               <p className="font-medium text-lg">
@@ -132,15 +131,15 @@ export function Hero() {
 
         <div className="mt-12 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
           <div className="flex items-center gap-2">
-            <ShieldCheck className="h-4 w-4 text-green-500" />
+            <ShieldCheck className="h-4 w-4 text-foreground" />
             Files stay local
           </div>
           <div className="flex items-center gap-2">
-            <Zap className="h-4 w-4 text-yellow-500" />
+            <Zap className="h-4 w-4 text-foreground" />
             No account needed
           </div>
           <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-blue-500" />
+            <Sparkles className="h-4 w-4 text-foreground" />
             AI-powered editing
           </div>
         </div>

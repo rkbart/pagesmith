@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Hammer, Menu, X } from "lucide-react";
 import { useState } from "react";
 import { buttonVariants } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/shared/ThemeToggle";
 
 const navLinks = [
   { href: "/convert", label: "Convert" },
@@ -42,6 +43,7 @@ export function Header() {
         </nav>
 
         <div className="hidden md:flex items-center gap-2 ml-4">
+          <ThemeToggle />
           <a
             href="https://www.buymeacoffee.com/rkbart"
             target="_blank"
@@ -52,13 +54,16 @@ export function Header() {
           </a>
         </div>
 
-        <button
-          className="md:hidden p-2 rounded-md hover:bg-muted"
-          onClick={() => setMobileOpen(!mobileOpen)}
-          aria-label="Toggle menu"
-        >
-          {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </button>
+        <div className="md:hidden ml-auto flex items-center gap-1">
+          <ThemeToggle />
+          <button
+            className="p-2 rounded-lg hover:bg-muted"
+            onClick={() => setMobileOpen(!mobileOpen)}
+            aria-label="Toggle menu"
+          >
+            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+        </div>
       </div>
 
       {mobileOpen && (

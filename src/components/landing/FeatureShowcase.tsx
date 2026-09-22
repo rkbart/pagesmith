@@ -35,11 +35,11 @@ const features = [
 
 export function FeatureShowcase() {
   return (
-    <section className="bg-muted/50 py-16">
+    <section className="bg-muted py-16">
       <div className="container px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold">Everything You Need to Publish</h2>
-          <p className="text-muted-foreground mt-2 max-w-2xl mx-auto">
+          <h2 className="heading-lg">Everything You Need to Publish</h2>
+          <p className="body-lg text-muted-foreground mt-2 max-w-2xl mx-auto">
             From raw manuscript to polished EPUB — PageSmith gives you the tools to craft a
             professional ebook without leaving your browser.
           </p>
@@ -48,13 +48,13 @@ export function FeatureShowcase() {
           {features.map((f) => {
             const Icon = f.icon;
             return (
-              <div key={f.title} className="flex items-start gap-4 p-4 rounded-lg hover:bg-muted/30 transition-colors">
-                <div className="shrink-0 rounded-lg bg-primary/10 p-3">
-                  <Icon className="h-6 w-6 text-primary" />
+              <div key={f.title} className="flex items-start gap-4 p-4 rounded-lg hover:bg-background transition-colors">
+                <div className="shrink-0 rounded-lg bg-background border p-3">
+                  <Icon className="h-6 w-6 text-foreground" />
                 </div>
                 <div>
-                  <h3 className="font-semibold">{f.title}</h3>
-                  <p className="text-sm text-muted-foreground mt-1">{f.description}</p>
+                  <h3 className="heading-sm">{f.title}</h3>
+                  <p className="body-sm text-muted-foreground mt-1">{f.description}</p>
                 </div>
               </div>
             );

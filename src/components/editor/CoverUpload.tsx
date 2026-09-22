@@ -34,7 +34,7 @@ export function CoverUpload() {
         <img
           src={project.cover.data}
           alt="Book cover"
-          className="w-full rounded-md border shadow-sm"
+          className="w-full rounded-md border"
         />
         <button
           onClick={() => setCover(undefined)}

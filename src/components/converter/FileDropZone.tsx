@@ -27,10 +27,10 @@ export function FileDropZone({ accept, onFile, label, disabled }: FileDropZonePr
 
   return (
     <div
-      className={`relative rounded-2xl border-2 border-dashed p-12 text-center transition-all cursor-pointer ${
+      className={`relative rounded-lg border border-dashed p-12 text-center transition-all cursor-pointer ${
         dragOver
           ? "border-primary bg-primary/5"
-          : "border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/30"
+          : "border-input hover:border-primary/50 hover:bg-muted/30"
       } ${disabled ? "opacity-50 pointer-events-none" : ""}`}
       onDragOver={(e) => {
         e.preventDefault();
@@ -41,8 +41,8 @@ export function FileDropZone({ accept, onFile, label, disabled }: FileDropZonePr
       onClick={() => inputRef.current?.click()}
     >
       <div className="flex flex-col items-center gap-4">
-        <div className="rounded-full bg-primary/10 p-4">
-          <FileUp className="h-8 w-8 text-primary" />
+        <div className="rounded-lg bg-muted p-4">
+          <FileUp className="h-8 w-8 text-foreground" />
         </div>
         <div>
           <p className="font-medium text-lg">{label}</p>

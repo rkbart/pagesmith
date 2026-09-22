@@ -52,10 +52,10 @@ export function AISection() {
       <div className="container px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
           <Badge variant="secondary" className="mb-3">
-            ✨ AI-Powered
+            AI-Powered
           </Badge>
-          <h2 className="text-3xl font-bold">Let AI Polish Your Book</h2>
-          <p className="text-muted-foreground mt-2 max-w-2xl mx-auto">
+          <h2 className="heading-lg">Let AI Polish Your Book</h2>
+          <p className="body-lg text-muted-foreground mt-2 max-w-2xl mx-auto">
             Basic AI features run free in your browser. For premium quality, connect your own
             OpenAI or Anthropic API key — your key, your data, your control.
           </p>
@@ -64,19 +64,19 @@ export function AISection() {
           {aiFeatures.map((feature) => (
             <div
               key={feature.title}
-              className="flex items-start gap-4 p-4 rounded-lg hover:bg-muted/30 transition-colors"
+              className="flex items-start gap-4 p-4 rounded-lg hover:bg-muted transition-colors"
             >
-              <div className="shrink-0 rounded-lg bg-primary/10 p-2">
-                <feature.icon className="h-5 w-5 text-primary" />
+              <div className="shrink-0 rounded-lg bg-muted p-2">
+                <feature.icon className="h-5 w-5 text-foreground" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="font-semibold">{feature.title}</h3>
+                  <h3 className="heading-sm">{feature.title}</h3>
                   <Badge variant="outline" className="text-xs">
                     {feature.badge}
                   </Badge>
                 </div>
-                <p className="text-sm text-muted-foreground mt-1">{feature.description}</p>
+                <p className="body-sm text-muted-foreground mt-1">{feature.description}</p>
               </div>
             </div>
           ))}
