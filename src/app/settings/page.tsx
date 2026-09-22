@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Key, Eye, EyeOff, Save, CheckCircle2 } from "lucide-react";
+import { Key, Eye, EyeOff, Save, CheckCircle2, Lock, Globe, Coffee } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,7 +45,10 @@ export default function SettingsPage() {
     const stored = localStorage.getItem("pagesmith-ai-settings");
     if (stored) {
       try {
-        setSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(stored) });
+        const parsed = { ...DEFAULT_SETTINGS, ...JSON.parse(stored) };
+        // Deferred so settings state isn't set synchronously in the effect.
+        const t = setTimeout(() => setSettings(parsed), 0);
+        return () => clearTimeout(t);
       } catch {
         // use defaults
       }
@@ -59,10 +62,13 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="container px-4 sm:px-6 lg:px-8 py-12 max-w-2xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">Settings</h1>
-        <p className="text-muted-foreground mt-2">Configure AI features and preferences</p>
+    <div className="container mx-auto max-w-2xl px-4 py-12 sm:px-6 lg:px-8">
+      <div className="mb-10">
+        <p className="eyebrow mb-2">Settings</p>
+        <h1 className="heading-lg">Configure the apprentice</h1>
+        <p className="body-md-loose mt-2 text-muted-foreground">
+          AI features and preferences — everything stays on this device.
+        </p>
       </div>
 
       <div className="space-y-6">
@@ -218,8 +224,15 @@ export default function SettingsPage() {
                     : `Using ${settings.provider} API with your key`}
                 </p>
               </div>
-              <Badge variant={settings.provider === "browser" ? "secondary" : "default"}>
-                {settings.provider === "browser" ? "🔒 Local" : "🌐 API"}
+              <Badge variant={settings.provider === "browser" ? "secondary" : "brass"}>
+                <span className="inline-flex items-center gap-1">
+                  {settings.provider === "browser" ? (
+                    <Lock className="size-3" aria-hidden="true" />
+                  ) : (
+                    <Globe className="size-3" aria-hidden="true" />
+                  )}
+                  {settings.provider === "browser" ? "Local" : "API"}
+                </span>
               </Badge>
             </div>
           </Card>
@@ -237,17 +250,18 @@ export default function SettingsPage() {
           </Button>
         </div>
 
-        <div className="text-center pt-4">
-          <p className="text-sm text-muted-foreground mb-2">
+        <div className="pt-4 text-center">
+          <p className="mb-2 text-sm text-muted-foreground">
             If PageSmith helps you publish, consider supporting development:
           </p>
           <a
             href="https://www.buymeacoffee.com/rkbart"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-block text-primary font-medium hover:underline"
+            className="inline-flex items-center gap-1.5 font-medium text-brass hover:underline"
           >
-            ☕ Buy Me a Coffee
+            <Coffee className="size-4" aria-hidden="true" />
+            Buy Me a Coffee
           </a>
         </div>
       </div>

@@ -27,20 +27,16 @@ export function ChapterEditor({ chapter }: { chapter: Chapter }) {
   const editorRef = useRef<HTMLDivElement>(null);
   const [title, setTitle] = useState(chapter.title);
   const [level, setLevel] = useState(String(chapter.level));
-  const [initialized, setInitialized] = useState(false);
 
+  // InnerHTML is set once on mount. The parent remounts this component with
+  // a fresh `key` when the active chapter changes, so local state (title,
+  // level, content) resets naturally without state-in-effect juggling.
   useEffect(() => {
-    if (editorRef.current && !initialized) {
+    if (editorRef.current) {
       editorRef.current.innerHTML = chapter.content;
-      setInitialized(true);
     }
-  }, [chapter.id, chapter.content, initialized]);
-
-  useEffect(() => {
-    setInitialized(false);
-    setTitle(chapter.title);
-    setLevel(String(chapter.level));
-  }, [chapter.id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleContentChange = useCallback(() => {
     if (editorRef.current) {
@@ -96,7 +92,7 @@ export function ChapterEditor({ chapter }: { chapter: Chapter }) {
         </Select>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 rounded-md border p-2">
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border bg-card p-2 shadow-panel">
         {TOOLBAR_BUTTONS.map((btn) => (
           <button
             key={btn.command}
@@ -163,7 +159,7 @@ export function ChapterEditor({ chapter }: { chapter: Chapter }) {
         suppressContentEditableWarning
         onInput={handleContentChange}
         onBlur={handleContentChange}
-        className="prose prose-lg max-w-none min-h-[400px] rounded-md border p-6 focus:outline-none focus:ring-2 focus:ring-ring [&_h1]:text-2xl [&_h2]:text-xl [&_h3]:text-lg [&_p]:my-2 [&_p]:leading-relaxed [&_p]:indent-4"
+        className="prose prose-lg max-w-none min-h-[420px] rounded-xl border bg-paper p-6 shadow-panel focus:outline-none focus:ring-3 focus:ring-ring/30 sm:p-8 [&_h1]:text-2xl [&_h2]:text-xl [&_h3]:text-lg [&_p]:my-2 [&_p]:leading-relaxed [&_p]:indent-4"
         style={{ fontFamily: "Georgia, serif" }}
       />
     </div>

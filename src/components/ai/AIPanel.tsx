@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Languages, Wand2, BarChart3, Copy, Check } from "lucide-react";
+import { Loader2, Languages, Wand2, BarChart3, Copy, Check, Sparkles, Lock, Globe } from "lucide-react";
 
 type AITool = "translate" | "edit" | "readability";
 
@@ -117,11 +117,20 @@ export function AIPanel() {
     <Card className="p-6">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <span className="text-lg">✨</span>
-          <h3 className="font-semibold text-lg">AI Tools</h3>
+          <span className="grid size-7 place-items-center rounded-lg bg-brass/10">
+            <Sparkles className="size-4 text-brass" aria-hidden="true" />
+          </span>
+          <h3 className="font-heading text-lg">AI Tools</h3>
         </div>
         <Badge variant="outline" className="text-xs">
-          {loadAIConfig().provider === "browser" ? "🔒 Local" : "🌐 API"}
+          <span className="inline-flex items-center gap-1">
+            {loadAIConfig().provider === "browser" ? (
+              <Lock className="size-3" aria-hidden="true" />
+            ) : (
+              <Globe className="size-3" aria-hidden="true" />
+            )}
+            {loadAIConfig().provider === "browser" ? "Local" : "API"}
+          </span>
         </Badge>
       </div>
 
@@ -140,7 +149,7 @@ export function AIPanel() {
             ).map(({ value, label, icon: Icon }) => (
               <Button
                 key={value}
-                variant={tool === value ? "default" : "outline"}
+                variant={tool === value ? "brass" : "outline"}
                 size="sm"
                 onClick={() => {
                   setTool(value);
@@ -215,7 +224,7 @@ export function AIPanel() {
 
           {/* Error */}
           {error && (
-            <div className="text-sm text-red-500 bg-red-50 dark:bg-red-950/20 p-3 rounded-md">
+            <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
               {error}
             </div>
           )}

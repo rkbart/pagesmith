@@ -9,7 +9,7 @@ export function useParser() {
   const [parsing, setParsing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ParseResult | null>(null);
-  const { importChapters, setMetadata, setCover, project } = useProjectStore();
+  const { importChapters } = useProjectStore();
 
   const parse = useCallback(
     async (file: File, format?: SourceFormat) => {
@@ -26,7 +26,12 @@ export function useParser() {
         const parseResult = await parseFile(file, fmt);
         setResult(parseResult);
 
-        if (project) {
+        // Read the store at call time, not render time — callers may have
+        // created the project moments before this runs (stale-closure safe).
+        const state = useProjectStore.getState();
+        if (state.project) {
+          state.importChapters(parseResult.chapters, parseResult.metadata, parseResult.cover);
+        } else {
           importChapters(parseResult.chapters, parseResult.metadata, parseResult.cover);
         }
 
@@ -39,7 +44,7 @@ export function useParser() {
         setParsing(false);
       }
     },
-    [importChapters, project]
+    [importChapters]
   );
 
   return { parsing, error, result, parse };

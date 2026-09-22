@@ -19,7 +19,7 @@ export function ChapterReview({ chapters }: { chapters: Chapter[] }) {
         return (
           <div
             key={ch.id}
-            className="rounded-md border cursor-pointer hover:bg-muted/50 transition-colors"
+            className="rounded-lg border bg-card cursor-pointer hover:border-brass/30 hover:bg-secondary/50 transition-colors"
             onClick={() => setExpandedId(isExpanded ? null : ch.id)}
           >
             <div className="flex items-center gap-2 px-3 py-2">

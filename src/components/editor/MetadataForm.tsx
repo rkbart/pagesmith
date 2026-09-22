@@ -31,8 +31,8 @@ export function MetadataForm() {
   const meta = project.metadata;
 
   return (
-    <div className="rounded-lg border p-6 space-y-4">
-      <h3 className="font-semibold text-lg">Book Metadata</h3>
+    <div className="space-y-4 rounded-2xl border bg-card p-6 shadow-panel">
+      <h3 className="font-heading text-lg">Book metadata</h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="title">Title *</Label>

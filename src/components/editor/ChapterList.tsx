@@ -48,11 +48,11 @@ export function ChapterList() {
           }}
           onDrop={() => handleDrop(index)}
           onClick={() => setActiveChapter(chapter.id)}
-          className={`group flex items-center gap-2 rounded-md border px-3 py-2 cursor-pointer text-sm transition-colors ${
+          className={`group flex cursor-pointer items-center gap-2 rounded-lg border bg-card px-3 py-2 text-sm transition-colors ${
             activeChapterId === chapter.id
-              ? "border-primary bg-primary/5"
-              : "border-transparent hover:bg-muted"
-          } ${overIndex === index && dragIndex !== null ? "border-primary border-dashed" : ""} ${
+              ? "border-brass/50 bg-brass/5"
+              : "border-border/60 hover:border-brass/30 hover:bg-secondary/50"
+          } ${overIndex === index && dragIndex !== null ? "border-brass border-dashed" : ""} ${
             dragIndex === index ? "opacity-50" : ""
           } ${LEVEL_INDENT[chapter.level] ?? "pl-4"}`}
         >
@@ -66,7 +66,7 @@ export function ChapterList() {
           <Button
             variant="ghost"
             size="sm"
-            className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-600"
+            className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 text-destructive hover:text-destructive/80"
             onClick={(e) => {
               e.stopPropagation();
               removeChapter(chapter.id);

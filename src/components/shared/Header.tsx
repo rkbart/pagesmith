@@ -2,39 +2,48 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Hammer, Menu, X } from "lucide-react";
+import { Feather, Menu, X, Coffee } from "lucide-react";
 import { useState } from "react";
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/shared/ThemeToggle";
 
 const navLinks = [
-  { href: "/convert", label: "Convert" },
-  { href: "/editor", label: "Editor" },
+  { href: "/convert", label: "Import" },
   { href: "/check", label: "Checker" },
   { href: "/settings", label: "Settings" },
 ];
+
+const BMC_URL = "https://www.buymeacoffee.com/rkbart";
 
 export function Header() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  const isActive = (href: string) =>
+    pathname === href || pathname.startsWith(href + "/");
+
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-14 items-center px-4 sm:px-6 lg:px-8">
-        <Link href="/" className="flex items-center gap-2 font-bold text-lg mr-auto">
-          <Hammer className="h-5 w-5 text-primary" />
-          <span>PageSmith</span>
+    <header className="sticky top-0 z-50 w-full border-b bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/75">
+      <div className="container flex h-16 items-center px-4 sm:px-6 lg:px-8">
+        <Link href="/" className="flex items-center gap-2.5 mr-auto">
+          <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-brass-soft shadow-panel transition-transform group-hover:scale-105">
+            <Feather className="size-4.5 text-white" aria-hidden="true" />
+          </span>
+          <span className="font-heading text-xl tracking-tight">
+            Page<span className="italic text-brass">Smith</span>
+          </span>
         </Link>
 
-        <nav className="hidden md:flex items-center gap-2">
+        <nav className="hidden md:flex items-center gap-1">
           {navLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className={`px-3 py-2 text-sm rounded-md transition-colors ${
-                pathname === link.href || pathname.startsWith(link.href + "/")
-                  ? "bg-muted text-foreground font-medium"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+              aria-current={isActive(link.href) ? "page" : undefined}
+              className={`px-3 py-2 text-sm rounded-lg transition-colors ${
+                isActive(link.href)
+                  ? "text-brass font-medium bg-brass/10"
+                  : "text-muted-foreground hover:text-foreground hover:bg-secondary"
               }`}
             >
               {link.label}
@@ -45,21 +54,29 @@ export function Header() {
         <div className="hidden md:flex items-center gap-2 ml-4">
           <ThemeToggle />
           <a
-            href="https://www.buymeacoffee.com/rkbart"
+            href={BMC_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className={buttonVariants({ variant: "outline", size: "sm" })}
+            aria-label="Support PageSmith on Buy Me a Coffee"
+            className="inline-flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
           >
-            ☕ Buy Me a Coffee
+            <Coffee className="size-4" aria-hidden="true" />
           </a>
+          <Link
+            href="/editor"
+            className={buttonVariants({ variant: "brass", size: "sm" })}
+          >
+            Open Studio
+          </Link>
         </div>
 
         <div className="md:hidden ml-auto flex items-center gap-1">
           <ThemeToggle />
           <button
-            className="p-2 rounded-lg hover:bg-muted"
+            className="p-2 rounded-lg hover:bg-secondary"
             onClick={() => setMobileOpen(!mobileOpen)}
             aria-label="Toggle menu"
+            aria-expanded={mobileOpen}
           >
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
@@ -67,27 +84,39 @@ export function Header() {
       </div>
 
       {mobileOpen && (
-        <div className="md:hidden border-t px-4 py-3 space-y-2">
+        <div className="md:hidden border-t px-4 py-3 space-y-1">
           {navLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className={`block px-3 py-2 text-sm rounded-md ${
-                pathname === link.href ? "bg-muted font-medium" : "text-muted-foreground"
+              className={`block px-3 py-2.5 text-sm rounded-lg ${
+                isActive(link.href)
+                  ? "text-brass font-medium bg-brass/10"
+                  : "text-muted-foreground hover:bg-secondary"
               }`}
               onClick={() => setMobileOpen(false)}
             >
               {link.label}
             </Link>
           ))}
-          <a
-            href="https://www.buymeacoffee.com/rkbart"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={buttonVariants({ variant: "outline", size: "sm", className: "w-full" })}
-          >
-            ☕ Buy Me a Coffee
-          </a>
+          <div className="flex items-center gap-2 pt-2">
+            <Link
+              href="/editor"
+              className={buttonVariants({ variant: "brass", size: "sm", className: "flex-1" })}
+              onClick={() => setMobileOpen(false)}
+            >
+              Open Studio
+            </Link>
+            <a
+              href={BMC_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Support PageSmith on Buy Me a Coffee"
+              className="inline-flex size-10 items-center justify-center rounded-lg border text-muted-foreground hover:bg-secondary"
+            >
+              <Coffee className="size-4" aria-hidden="true" />
+            </a>
+          </div>
         </div>
       )}
     </header>

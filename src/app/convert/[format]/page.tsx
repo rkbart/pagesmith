@@ -1,8 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, use } from "react";
-import { useRouter } from "next/navigation";
-import { FileUp, Loader2, AlertCircle, CheckCircle2, ArrowRight } from "lucide-react";
+import { Loader2, AlertCircle, CheckCircle2, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -11,6 +10,7 @@ import { useParser } from "@/hooks/useParser";
 import type { SourceFormat } from "@/types/project";
 import { FileDropZone } from "@/components/converter/FileDropZone";
 import { ChapterReview } from "@/components/converter/ChapterReview";
+import { consumeStagedFile } from "@/lib/utils/handoff";
 
 const FORMAT_INFO: Record<SourceFormat, { title: string; accept: string; description: string }> = {
   pdf: { title: "PDF to EPUB", accept: ".pdf", description: "Extract text and detect chapters from PDF files" },
@@ -27,71 +27,81 @@ export default function ConvertFormatPage({
   params: Promise<{ format: string }>;
 }) {
   const { format } = use(params);
-  const router = useRouter();
   const formatInfo = FORMAT_INFO[format as SourceFormat];
-  const { createProject, project, importChapters } = useProjectStore();
+  const { createProject } = useProjectStore();
   const { parsing, error, result, parse } = useParser();
-  const [file, setFile] = useState<File | null>(null);
   const [parsed, setParsed] = useState(false);
 
-  useEffect(() => {
-    if (parsed && project && result) {
-      // Already imported via useParser
-    }
-  }, [parsed, project, result]);
-
-  const handleFile = useCallback(
-    async (selectedFile: File) => {
-      setFile(selectedFile);
+  // Always bind a fresh project per import — an open book is never
+  // overwritten by accident.
+  const runParse = useCallback(
+    async (selectedFile: File, projectName: string) => {
       try {
-        if (!project) {
-          const name = selectedFile.name.replace(/\.[^.]+$/, "");
-          createProject(name);
-        }
-        const parseResult = await parse(selectedFile, format as SourceFormat);
+        createProject(projectName);
+        await parse(selectedFile, format as SourceFormat);
         setParsed(true);
       } catch {
-        // error is set by useParser
+        // error state is surfaced by useParser
       }
     },
-    [project, createProject, parse, format]
+    [createProject, parse, format]
   );
+
+  // Consume a file staged by the landing hero or the import desk, so a
+  // drop there flows straight into parsing — no re-drop needed. Deferred
+  // to a task so parsing state isn't set synchronously during the effect.
+  useEffect(() => {
+    if (!formatInfo) return;
+    const t = setTimeout(() => {
+      const staged = consumeStagedFile(format as SourceFormat);
+      if (staged) void runParse(staged.file, staged.projectName);
+    }, 0);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [format]);
+
+  const reset = () => {
+    setParsed(false);
+  };
 
   if (!formatInfo) {
     return (
       <div className="container py-16 text-center">
-        <h1 className="text-2xl font-bold mb-4">Unknown Format</h1>
-        <Link href="/convert" className={buttonVariants({ size: "lg" })}>
-          Back to Converter
+        <h1 className="heading-lg mb-4">Unknown format</h1>
+        <Link href="/convert" className={buttonVariants({ variant: "brass", size: "lg" })}>
+          Back to the import desk
         </Link>
       </div>
     );
   }
 
   return (
-    <div className="container px-4 sm:px-6 lg:px-8 py-12 max-w-3xl mx-auto">
-      <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold">{formatInfo.title}</h1>
-        <p className="text-muted-foreground mt-2">{formatInfo.description}</p>
+    <div className="container mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
+      <div className="mb-10 text-center">
+        <p className="eyebrow mb-2">On the press</p>
+        <h1 className="heading-lg">{formatInfo.title}</h1>
+        <p className="body-md-loose mt-2 text-muted-foreground">
+          {formatInfo.description}
+        </p>
       </div>
 
       {parsing && (
-        <Card className="p-8 text-center">
-          <Loader2 className="h-12 w-12 mx-auto animate-spin text-primary mb-4" />
-          <p className="font-medium">Parsing your file...</p>
-          <p className="text-sm text-muted-foreground mt-1">
-            Detecting chapters and extracting content
+        <Card className="items-center p-10 text-center">
+          <Loader2 className="size-10 animate-spin text-brass" aria-hidden="true" />
+          <p className="font-heading mt-4 text-lg">Reading your manuscript…</p>
+          <p className="body-sm mt-1 text-muted-foreground">
+            Detecting chapters and drafting a table of contents
           </p>
         </Card>
       )}
 
       {error && (
-        <Card className="p-6 border-red-300 bg-red-50 dark:bg-red-950/20">
+        <Card className="border-destructive/30 bg-destructive/5 p-6">
           <div className="flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
+            <AlertCircle className="mt-0.5 size-5 shrink-0 text-destructive" aria-hidden="true" />
             <div>
-              <p className="font-medium text-red-700 dark:text-red-400">Failed to parse file</p>
-              <p className="text-sm text-red-600 dark:text-red-400/80 mt-1">{error}</p>
+              <p className="font-medium text-destructive">This page didn&apos;t take</p>
+              <p className="body-sm mt-1 text-destructive/80">{error}</p>
             </div>
           </div>
         </Card>
@@ -100,17 +110,18 @@ export default function ConvertFormatPage({
       {parsed && result && !parsing && (
         <div className="space-y-6">
           <Card className="p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <CheckCircle2 className="h-5 w-5 text-green-500" />
+            <div className="mb-4 flex items-center gap-3">
+              <CheckCircle2 className="size-5 shrink-0 text-brass" aria-hidden="true" />
               <p className="font-medium">
-                Parsed {result.chapters.length} chapter{result.chapters.length !== 1 ? "s" : ""}
+                Parsed {result.chapters.length} chapter
+                {result.chapters.length !== 1 ? "s" : ""}
               </p>
             </div>
             {result.warnings.length > 0 && (
-              <div className="space-y-1 mb-4">
+              <div className="mb-4 space-y-1 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
                 {result.warnings.map((w, i) => (
-                  <p key={i} className="text-sm text-amber-600 dark:text-amber-400">
-                    ⚠ {w}
+                  <p key={i} className="text-sm text-amber-700 dark:text-amber-400">
+                    {w}
                   </p>
                 ))}
               </div>
@@ -118,19 +129,12 @@ export default function ConvertFormatPage({
             <ChapterReview chapters={result.chapters} />
           </Card>
 
-          <div className="flex gap-3">
-            <Link href="/editor" className={buttonVariants({ size: "lg" })}>
-              Open in Editor <ArrowRight className="ml-2 h-4 w-4" />
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Link href="/editor" className={buttonVariants({ variant: "brass", size: "lg" })}>
+              Open in the studio <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
-            <Button
-              variant="outline"
-              size="lg"
-              onClick={() => {
-                setFile(null);
-                setParsed(false);
-              }}
-            >
-              Parse Another File
+            <Button variant="outline" size="lg" onClick={reset}>
+              Bind another file
             </Button>
           </div>
         </div>
@@ -139,7 +143,7 @@ export default function ConvertFormatPage({
       {!parsed && !parsing && (
         <FileDropZone
           accept={formatInfo.accept}
-          onFile={handleFile}
+          onFile={(selected) => void runParse(selected, selected.name.replace(/\.[^.]+$/, ""))}
           label={`Drop your ${format.toUpperCase()} file here`}
         />
       )}

@@ -34,11 +34,11 @@ export function CoverUpload() {
         <img
           src={project.cover.data}
           alt="Book cover"
-          className="w-full rounded-md border"
+          className="w-full rounded-xl border shadow-panel"
         />
         <button
           onClick={() => setCover(undefined)}
-          className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+          className="absolute top-2 right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
           aria-label="Remove cover"
         >
           <X className="h-4 w-4" />
@@ -59,9 +59,9 @@ export function CoverUpload() {
     <div>
       <button
         onClick={() => inputRef.current?.click()}
-        className="w-full border-2 border-dashed rounded-md p-6 flex flex-col items-center gap-2 text-muted-foreground hover:border-primary/50 hover:bg-muted/50 transition-colors"
+        className="w-full rounded-xl border-2 border-dashed border-brass/30 p-6 flex flex-col items-center gap-2 text-muted-foreground hover:border-brass/60 hover:bg-brass/5 transition-colors"
       >
-        <ImagePlus className="h-8 w-8" />
+        <ImagePlus className="h-8 w-8 text-brass" aria-hidden="true" />
         <span className="text-sm">Upload cover image</span>
         <span className="text-xs">JPG, PNG, or WebP</span>
       </button>

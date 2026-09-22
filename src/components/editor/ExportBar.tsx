@@ -36,35 +36,39 @@ export function ExportBar({
   }
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2">
-      <h1 className="text-lg font-bold min-w-0 truncate">{project.metadata.title || project.name}</h1>
-      <div className="flex flex-wrap items-center gap-2">
-        <Button variant="outline" size="sm" onClick={onToggleMeta}>
-          <Settings2 className="h-4 w-4 mr-1" /> Metadata
-        </Button>
-        <Button variant="outline" size="sm" onClick={onToggleAI}>
-          <Sparkles className="h-4 w-4 mr-1" /> AI Tools
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => setShowPreview(true)}>
-          <Eye className="h-4 w-4 mr-1" /> Preview
-        </Button>
+    <div className="rounded-2xl border bg-card p-3 shadow-panel">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-2">
+        <h1 className="font-heading min-w-0 truncate text-lg">
+          {project.metadata.title || project.name}
+        </h1>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" onClick={onToggleMeta}>
+            <Settings2 className="h-4 w-4 mr-1" /> Metadata
+          </Button>
+          <Button variant="outline" size="sm" onClick={onToggleAI}>
+            <Sparkles className="h-4 w-4 mr-1" /> AI Tools
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setShowPreview(true)}>
+            <Eye className="h-4 w-4 mr-1" /> Preview
+          </Button>
 
-        <Link href="/convert" className={buttonVariants({ variant: "outline", size: "sm" })}>
-          Convert File
-        </Link>
+          <Link href="/convert" className={buttonVariants({ variant: "outline", size: "sm" })}>
+            Import file
+          </Link>
 
-        <Separator orientation="vertical" className="h-6 mx-1 hidden sm:block" />
+          <Separator orientation="vertical" className="mx-1 hidden h-6 sm:block" />
 
-        <Button size="sm" onClick={handleExport} disabled={!canExport || exporting}>
-          {exporting ? (
-            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-          ) : (
-            <Download className="h-4 w-4 mr-1" />
-          )}
-          Export EPUB
-        </Button>
+          <Button variant="brass" size="sm" onClick={handleExport} disabled={!canExport || exporting}>
+            {exporting ? (
+              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4 mr-1" />
+            )}
+            Export EPUB
+          </Button>
+        </div>
+        {error && <p className="w-full px-2 text-sm text-destructive">{error}</p>}
       </div>
-      {error && <p className="text-sm text-red-500 w-full">{error}</p>}
       <PreviewDialog open={showPreview} onOpenChange={setShowPreview} />
     </div>
   );

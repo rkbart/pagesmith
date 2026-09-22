@@ -25,31 +25,45 @@ export function FileDropZone({ accept, onFile, label, disabled }: FileDropZonePr
     [onFile, disabled]
   );
 
+  const formatList = accept.replace(/\./g, "").replace(/,/g, ", ");
+
   return (
     <div
-      className={`relative rounded-lg border border-dashed p-12 text-center transition-all cursor-pointer ${
-        dragOver
-          ? "border-primary bg-primary/5"
-          : "border-input hover:border-primary/50 hover:bg-muted/30"
-      } ${disabled ? "opacity-50 pointer-events-none" : ""}`}
+      role="button"
+      tabIndex={disabled ? -1 : 0}
+      aria-label={label}
+      aria-disabled={disabled}
+      onKeyDown={(e) => {
+        if (!disabled && (e.key === "Enter" || e.key === " ")) {
+          e.preventDefault();
+          inputRef.current?.click();
+        }
+      }}
       onDragOver={(e) => {
         e.preventDefault();
-        setDragOver(true);
+        if (!disabled) setDragOver(true);
       }}
       onDragLeave={() => setDragOver(false)}
       onDrop={handleDrop}
-      onClick={() => inputRef.current?.click()}
+      onClick={() => !disabled && inputRef.current?.click()}
+      className={`relative rounded-2xl border bg-paper p-3 shadow-panel outline-none transition-all focus-visible:ring-3 focus-visible:ring-ring/50 ${
+        disabled
+          ? "pointer-events-none opacity-50"
+          : "cursor-pointer hover:-translate-y-0.5 hover:shadow-lift"
+      }`}
     >
-      <div className="flex flex-col items-center gap-4">
-        <div className="rounded-lg bg-muted p-4">
-          <FileUp className="h-8 w-8 text-foreground" />
+      <div
+        className={`rounded-xl border-2 border-dashed p-8 sm:p-10 text-center transition-colors ${
+          dragOver ? "border-brass bg-brass/5" : "border-brass/30"
+        }`}
+      >
+        <div className="mx-auto mb-4 grid size-12 place-items-center rounded-xl bg-brass/10">
+          <FileUp className="size-5 text-brass" aria-hidden="true" />
         </div>
-        <div>
-          <p className="font-medium text-lg">{label}</p>
-          <p className="text-sm text-muted-foreground mt-1">
-            or click to browse · {accept.replace(/\./g, "").replace(/,/g, ", ")}
-          </p>
-        </div>
+        <p className="font-heading text-lg">{label}</p>
+        <p className="body-sm text-muted-foreground mt-1.5">
+          or click to browse · {formatList}
+        </p>
       </div>
       <input
         ref={inputRef}

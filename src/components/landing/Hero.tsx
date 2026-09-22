@@ -2,145 +2,157 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useState } from "react";
-import { FileUp, ArrowRight, ShieldCheck, Zap, Sparkles } from "lucide-react";
-import { Button, buttonVariants } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { useProjectStore } from "@/lib/store/project";
+import { useCallback, useRef, useState } from "react";
+import {
+  FileUp,
+  ArrowRight,
+  ShieldCheck,
+  Zap,
+  Sparkles,
+  AlertCircle,
+} from "lucide-react";
+import { buttonVariants } from "@/components/ui/button";
+import { stageFileForConvert, ACCEPTED_DROP } from "@/lib/utils/handoff";
 
-const ACCEPTED = ".pdf,.docx,.md,.markdown,.html,.htm,.txt,.epub";
+const trust = [
+  { icon: ShieldCheck, label: "Files never leave your device" },
+  { icon: Zap, label: "No account, no upload" },
+  { icon: Sparkles, label: "AI tools built in" },
+];
 
 export function Hero() {
   const router = useRouter();
+  const inputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
-  const [parsing, setParsing] = useState(false);
-  const { createProject } = useProjectStore();
+  const [staging, setStaging] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleFile = useCallback(
     async (file: File) => {
-      setParsing(true);
-      try {
-        const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
-        const formatMap: Record<string, string> = {
-          pdf: "pdf",
-          docx: "docx",
-          md: "md",
-          markdown: "md",
-          html: "html",
-          htm: "html",
-          txt: "txt",
-          epub: "epub",
-        };
-        const format = formatMap[ext];
-        if (!format) {
-          alert("Unsupported file format");
-          return;
-        }
-
-        const projectName = file.name.replace(/\.[^.]+$/, "");
-        createProject(projectName);
-
-        const formData = new FormData();
-        formData.append("file", file);
-
-        sessionStorage.setItem("pendingParse", JSON.stringify({ format, projectName }));
-        const reader = new FileReader();
-        reader.onload = () => {
-          sessionStorage.setItem("pendingFileData", reader.result as string);
-          sessionStorage.setItem("pendingFileName", file.name);
-          router.push(`/convert/${format}`);
-        };
-        reader.readAsDataURL(file);
-      } finally {
-        setParsing(false);
+      setStaging(true);
+      setError(null);
+      // Stage the file, then route — /convert/[format] picks it up and
+      // parses immediately. No re-drop needed.
+      const format = await stageFileForConvert(file);
+      if (!format) {
+        setStaging(false);
+        setError(
+          "That format isn't on the press yet — try PDF, DOCX, MD, HTML, TXT or EPUB."
+        );
+        return;
       }
+      router.push(`/convert/${format}`);
     },
-    [createProject, router]
+    [router]
   );
 
   return (
     <section className="relative overflow-hidden">
-      <div className="container px-4 sm:px-6 lg:px-8 py-16 sm:py-20 text-center">
-        <div className="inline-flex items-center gap-2 rounded-none border px-3 py-1 text-xs text-muted-foreground mb-6">
-          <Sparkles className="h-3 w-3" />
-          Free · Local · AI-Powered
-        </div>
+      {/* warm ink-wash backdrop */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -top-24 right-[-10%] size-[420px] rounded-full bg-brass-soft/10 blur-3xl"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute bottom-[-40%] left-[-10%] size-[380px] rounded-full bg-secondary/70 blur-3xl"
+      />
 
-        <h1 className="display mb-6">
-          Craft Beautiful EPUB Books
-          <br />
-          From Any Format
-        </h1>
+      <div className="container relative px-4 sm:px-6 lg:px-8 py-16 lg:py-24">
+        <div className="grid items-center gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16">
+          {/* Copy */}
+          <div>
+            <p className="eyebrow mb-4">The browser bindery</p>
+            <h1 className="display">
+              Bind your words into a finished&nbsp;book.
+            </h1>
+            <p className="body-lg text-muted-foreground mt-5 max-w-xl">
+              Drop a PDF, DOCX, Markdown, HTML, TXT or EPUB manuscript.
+              PageSmith detects your chapters, hands you a full editing
+              workbench with AI tools, and presses it into a clean EPUB 3 —
+              everything stays on your device.
+            </p>
 
-        <p className="body-lg text-muted-foreground max-w-2xl mx-auto mb-10">
-          Convert PDF, DOCX, Markdown, HTML, TXT, and EPUB files into clean, structured ebooks.
-          Edit chapters, translate with AI, and export — all running locally in your browser.
-        </p>
+            <div className="mt-8 flex flex-col sm:flex-row gap-3">
+              <Link href="/convert" className={buttonVariants({ variant: "brass", size: "lg" })}>
+                Bind a book <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+              <Link href="/editor" className={buttonVariants({ variant: "outline", size: "lg" })}>
+                Open the studio
+              </Link>
+            </div>
 
-        <div
-          className={`relative max-w-xl mx-auto rounded-lg border border-dashed p-8 sm:p-12 transition-all cursor-pointer group ${
-            dragOver
-              ? "border-primary bg-primary/5 scale-[1.02]"
-              : "border-input hover:border-primary/50 hover:bg-muted/30"
-          }`}
-          onDragOver={(e) => {
-            e.preventDefault();
-            setDragOver(true);
-          }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={(e) => {
-            e.preventDefault();
-            setDragOver(false);
-            const file = e.dataTransfer.files[0];
-            if (file) handleFile(file);
-          }}
-          onClick={() => {
-            const input = document.createElement("input");
-            input.type = "file";
-            input.accept = ACCEPTED;
-            input.onchange = (e) => {
-              const file = (e.target as HTMLInputElement).files?.[0];
+            <ul className="mt-10 flex flex-wrap gap-x-6 gap-y-2">
+              {trust.map((t) => (
+                <li key={t.label} className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <t.icon className="size-4 text-brass" aria-hidden="true" />
+                  {t.label}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Dropzone — styled as a manuscript sheet */}
+          <div
+            role="button"
+            tabIndex={0}
+            aria-label="Drop a manuscript file to import, or press Enter to browse"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                inputRef.current?.click();
+              }
+            }}
+            onClick={() => inputRef.current?.click()}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragOver(true);
+            }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragOver(false);
+              const file = e.dataTransfer.files[0];
               if (file) handleFile(file);
-            };
-            input.click();
-          }}
-        >
-          <div className="flex flex-col items-center gap-4">
-            <div className="rounded-lg bg-muted p-4 group-hover:bg-secondary transition-colors">
-              <FileUp className="h-8 w-8 text-foreground" />
-            </div>
-            <div>
-              <p className="font-medium text-lg">
-                {parsing ? "Parsing..." : "Drop your file here"}
+            }}
+            className="relative rounded-2xl border bg-paper p-3 shadow-lift outline-none cursor-pointer transition-transform duration-200 hover:-translate-y-1 focus-visible:ring-3 focus-visible:ring-ring/50"
+          >
+            <div
+              className={`rounded-xl border-2 border-dashed p-8 sm:p-10 text-center transition-colors ${
+                dragOver ? "border-brass bg-brass/5" : "border-brass/30"
+              }`}
+            >
+              <div className="mx-auto mb-4 grid size-14 place-items-center rounded-2xl bg-brass/10">
+                <FileUp className="size-6 text-brass" aria-hidden="true" />
+              </div>
+              <p className="font-heading text-xl">
+                {staging ? "Warming the press…" : "Drop a manuscript on the press"}
               </p>
-              <p className="text-sm text-muted-foreground mt-1">
-                or click to browse · PDF, DOCX, MD, HTML, TXT, EPUB
+              <p className="body-sm text-muted-foreground mt-1.5">
+                or click to browse — PDF, DOCX, MD, HTML, TXT, EPUB
               </p>
+              {error && (
+                <p className="mt-3 flex items-center justify-center gap-1.5 text-sm text-destructive">
+                  <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
+                  {error}
+                </p>
+              )}
             </div>
-          </div>
-        </div>
-
-        <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
-          <Link href="/convert" className={buttonVariants({ size: "lg" })}>
-            Open Converter <ArrowRight className="ml-2 h-4 w-4" />
-          </Link>
-          <Link href="/editor" className={buttonVariants({ variant: "outline", size: "lg" })}>
-            Start with Blank Book
-          </Link>
-        </div>
-
-        <div className="mt-12 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="h-4 w-4 text-foreground" />
-            Files stay local
-          </div>
-          <div className="flex items-center gap-2">
-            <Zap className="h-4 w-4 text-foreground" />
-            No account needed
-          </div>
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-foreground" />
-            AI-powered editing
+            <div className="flex items-center justify-between px-2 pt-3 pb-1">
+              <span className="code text-muted-foreground">EPUB 3 out</span>
+              <span className="code text-muted-foreground">Nothing uploaded</span>
+            </div>
+            <input
+              ref={inputRef}
+              type="file"
+              accept={ACCEPTED_DROP}
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleFile(file);
+                e.target.value = "";
+              }}
+            />
           </div>
         </div>
       </div>

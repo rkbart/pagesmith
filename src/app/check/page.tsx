@@ -36,28 +36,29 @@ export default function CheckPage() {
   const infoCount = result?.issues.filter((i) => i.severity === "info").length ?? 0;
 
   return (
-    <div className="container px-4 sm:px-6 lg:px-8 py-12 max-w-3xl mx-auto">
-      <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold">EPUB Checker</h1>
-        <p className="text-muted-foreground mt-2">
-          Validate your EPUB file before publishing
+    <div className="container mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
+      <div className="mb-10 text-center">
+        <p className="eyebrow mb-2">The inspector</p>
+        <h1 className="heading-lg">EPUB Checker</h1>
+        <p className="body-md-loose mt-2 text-muted-foreground">
+          Press-check your EPUB before it goes out into the world.
         </p>
       </div>
 
       {parsing && (
-        <Card className="p-8 text-center">
-          <Loader2 className="h-12 w-12 mx-auto animate-spin text-primary mb-4" />
-          <p className="font-medium">Checking EPUB...</p>
+        <Card className="items-center p-10 text-center">
+          <Loader2 className="size-10 animate-spin text-brass" aria-hidden="true" />
+          <p className="font-heading mt-4 text-lg">Inspecting your EPUB…</p>
         </Card>
       )}
 
       {error && (
-        <Card className="p-6 border-red-300 bg-red-50 dark:bg-red-950/20 mb-6">
+        <Card className="mb-6 border-destructive/30 bg-destructive/5 p-6">
           <div className="flex items-start gap-3">
-            <XCircle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
+            <XCircle className="mt-0.5 size-5 shrink-0 text-destructive" aria-hidden="true" />
             <div>
-              <p className="font-medium text-red-700 dark:text-red-400">Failed to check EPUB</p>
-              <p className="text-sm text-red-600 dark:text-red-400/80 mt-1">{error}</p>
+              <p className="font-medium text-destructive">Couldn&apos;t inspect this file</p>
+              <p className="body-sm mt-1 text-destructive/80">{error}</p>
             </div>
           </div>
         </Card>
@@ -66,25 +67,25 @@ export default function CheckPage() {
       {result && !parsing && (
         <div className="space-y-6">
           <Card className="p-6">
-            <div className="flex items-center gap-3 mb-4">
+            <div className="mb-4 flex items-center gap-3">
               {result.valid ? (
-                <CheckCircle2 className="h-6 w-6 text-green-500" />
+                <CheckCircle2 className="size-6 shrink-0 text-brass" aria-hidden="true" />
               ) : (
-                <AlertCircle className="h-6 w-6 text-red-500" />
+                <AlertCircle className="size-6 shrink-0 text-destructive" aria-hidden="true" />
               )}
               <div>
-                <p className="font-semibold text-lg">
-                  {result.valid ? "EPUB is Valid" : "EPUB Has Issues"}
+                <p className="font-heading text-lg">
+                  {result.valid ? "Ready to ship" : "Needs another pass"}
                 </p>
-                <p className="text-sm text-muted-foreground">{fileName}</p>
+                <p className="body-sm text-muted-foreground">{fileName}</p>
               </div>
             </div>
 
-            <div className="flex gap-2 mb-4">
+            <div className="mb-4 flex flex-wrap gap-2">
               <Badge variant={errorCount > 0 ? "destructive" : "outline"}>
                 {errorCount} error{errorCount !== 1 ? "s" : ""}
               </Badge>
-              <Badge variant={warningCount > 0 ? "default" : "outline"}>
+              <Badge variant={warningCount > 0 ? "secondary" : "outline"}>
                 {warningCount} warning{warningCount !== 1 ? "s" : ""}
               </Badge>
               <Badge variant="outline">{infoCount} info</Badge>
@@ -95,33 +96,35 @@ export default function CheckPage() {
                 {result.issues.map((issue, i) => (
                   <div
                     key={i}
-                    className={`flex items-start gap-2 text-sm p-2 rounded ${
+                    className={`flex items-start gap-2 rounded-lg border p-2.5 text-sm ${
                       issue.severity === "error"
-                        ? "bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400"
+                        ? "border-destructive/30 bg-destructive/10 text-destructive"
                         : issue.severity === "warning"
-                          ? "bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400"
-                          : "bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400"
+                          ? "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                          : "border-border bg-secondary/60 text-muted-foreground"
                     }`}
                   >
-                    <span className="font-medium uppercase text-xs shrink-0 mt-0.5">
+                    <span className="mt-0.5 shrink-0 text-xs font-semibold uppercase">
                       {issue.severity}
                     </span>
                     <span>
                       {issue.message}
                       {issue.file && (
-                        <span className="block text-xs opacity-70">{issue.file}</span>
+                        <span className="code block opacity-70">{issue.file}</span>
                       )}
                     </span>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-green-600">No issues found! Your EPUB is ready.</p>
+              <p className="text-sm text-brass">
+                No issues found — your EPUB is ready to ship.
+              </p>
             )}
           </Card>
 
           <Button variant="outline" onClick={() => setResult(null)}>
-            Check Another File
+            Inspect another file
           </Button>
         </div>
       )}

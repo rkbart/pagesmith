@@ -44,7 +44,7 @@ export function PreviewDialog({
                   key={ch.id}
                   onClick={() => setActiveTab(i)}
                   className={`text-left text-sm px-2 py-1 rounded truncate ${
-                    activeTab === i ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted"
+                    activeTab === i ? "bg-brass/10 text-brass font-medium" : "hover:bg-secondary"
                   } ${LEVEL_INDENT[ch.level] ?? "pl-4"}`}
                 >
                   {ch.title}
@@ -54,7 +54,7 @@ export function PreviewDialog({
           </nav>
 
           {/* Content */}
-            <div className="flex-1 overflow-y-auto border rounded-lg p-6 bg-background">
+            <div className="flex-1 overflow-y-auto rounded-xl border bg-paper p-6 shadow-panel">
             <div
               className="prose prose-sm max-w-none dark:prose-invert"
               style={{ fontFamily: "Georgia, serif" }}
