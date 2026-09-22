@@ -3,6 +3,15 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Tailwind v4's built-in `container` never centers itself (the root cause
+   of the old left-leaning layout) and caps at 96rem. This custom utility
+   keeps the built-in responsive caps and adds auto centering; the final
+   cap is re-pointed to 80rem via --breakpoint-2xl in the theme below. */
+@utility container {
+  width: 100%;
+  margin-inline: auto;
+}
+
 /*
  * PageSmith — "letterpress bookbindery" design system.
  * Warm paper-and-ink palette with brass accents and serif display type.
@@ -39,6 +48,10 @@
   --radius-md: 12px;
   --radius-lg: 14px;
   --radius-xl: 18px;
+
+  /* Cap the container's top breakpoint at 80rem (no `2xl:` variants are
+     used in this codebase, so repointing it has no side effects). */
+  --breakpoint-2xl: 80rem;
 
   --font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont,
     "Segoe UI", sans-serif;
@@ -146,6 +159,7 @@
     font-weight: 560;
     line-height: 1.06;
     letter-spacing: -0.02em;
+    text-wrap: balance;
   }
   .heading-lg {
     font-family: var(--font-heading);
@@ -153,6 +167,7 @@
     font-weight: 560;
     line-height: 1.2;
     letter-spacing: -0.015em;
+    text-wrap: balance;
   }
   .heading-md {
     font-family: var(--font-heading);

@@ -73,11 +73,17 @@ export function Hero() {
               everything stays on your device.
             </p>
 
-            <div className="mt-8 flex flex-col sm:flex-row gap-3">
-              <Link href="/convert" className={buttonVariants({ variant: "brass", size: "lg" })}>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <Link
+                href="/convert"
+                className={`${buttonVariants({ variant: "brass", size: "lg" })} w-full justify-center sm:w-auto`}
+              >
                 Bind a book <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
-              <Link href="/editor" className={buttonVariants({ variant: "outline", size: "lg" })}>
+              <Link
+                href="/editor"
+                className={`${buttonVariants({ variant: "outline", size: "lg" })} w-full justify-center sm:w-auto`}
+              >
                 Open the studio
               </Link>
             </div>
