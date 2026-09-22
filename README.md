@@ -1,36 +1,53 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PageSmith
 
-## Getting Started
+**Free, browser-first EPUB creator and editor with AI tools.**
 
-First, run the development server:
+Convert PDF, DOCX, Markdown, HTML, TXT, and EPUB into clean, structured ebooks. Edit chapters, translate, polish, preview, validate, and export — all running locally in your browser. No account, no upload, no server.
+
+## Quick start
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev        # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Verify:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npx tsc --noEmit && npm run build
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## What it does
 
-## Learn More
+- **Convert** — 6 formats → EPUB with automatic chapter detection
+- **Edit** — multi-chapter editor with rich-text toolbar, drag-reorder, metadata, cover
+- **AI** — readability (offline), translate/edit/summarize (BYOK OpenAI/Anthropic)
+- **Preview** — read your book with TOC before export
+- **Export** — valid EPUB 3 (JSZip)
+- **Check** — structural EPUB validator
 
-To learn more about Next.js, take a look at the following resources:
+## Docs
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Doc | |
+|---|---|
+| [Architecture](docs/ARCHITECTURE.md) | system design, layers, state, routing |
+| [Setup](docs/SETUP.md) | install, scripts, deploy |
+| [Tutorial](docs/TUTORIAL.md) | end-to-end walkthrough |
+| [Features](docs/FEATURES.md) | full feature list |
+| [AI Features](docs/AI-FEATURES.md) | hybrid AI model, config, API layer |
+| [Tech Decisions](docs/TECH-DECISIONS.md) | why this stack |
+| [Components](docs/COMPONENTS.md) | component inventory & conventions |
+| [Parsers](docs/PARSERS.md) | per-format parsing strategy |
+| [EPUB Generation](docs/EPUB-GENERATION.md) | build & validation internals |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Stack
 
-## Deploy on Vercel
+Next.js 16 · React 19 · TypeScript · Tailwind v4 · shadcn/ui (Base UI) · Zustand · pdfjs-dist · mammoth · marked · JSZip · Vercel-ready
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Support
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+If PageSmith helps you publish: [Buy Me a Coffee](https://www.buymeacoffee.com/rkbart)
+
+## Privacy
+
+Files never leave your device. API keys (optional) are stored in your browser's localStorage only.
