@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 import { useProjectStore } from "@/lib/store/project";
+import { useProjectHydrated } from "@/hooks/useHydrated";
 import { ChapterList } from "@/components/editor/ChapterList";
 import { ChapterEditor } from "@/components/editor/ChapterEditor";
 import { MetadataForm } from "@/components/editor/MetadataForm";
@@ -10,7 +11,7 @@ import { CoverUpload } from "@/components/editor/CoverUpload";
 import { ExportBar } from "@/components/editor/ExportBar";
 import { AIPanel } from "@/components/ai/AIPanel";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Plus, BookOpen, Feather, Loader2 } from "lucide-react";
+import { Plus, Library, Feather, Loader2 } from "lucide-react";
 
 export default function EditorPage() {
   const {
@@ -20,27 +21,19 @@ export default function EditorPage() {
     createProject,
     loadProject,
     addChapter,
-    setActiveChapter,
   } = useProjectStore();
   const [showMeta, setShowMeta] = useState(false);
   const [showAI, setShowAI] = useState(false);
 
-  // State now lives in IndexedDB, which hydrates asynchronously after
-  // mount — gate the UI on it so the empty state never flashes and the
-  // auto-load below always runs against restored data.
-  // useSyncExternalStore subscribes to persist's hydration-finished event;
-  // `onFinishHydration` already matches the subscribe/unsubscribe contract.
-  const hydrated = useSyncExternalStore(
-    useProjectStore.persist.onFinishHydration,
-    () => useProjectStore.persist.hasHydrated(),
-    // Server snapshot: the gate renders during SSR; content streams in
-    // once the client store finishes hydrating.
-    () => false
-  );
+  // State lives in IndexedDB, which hydrates asynchronously after mount — gate
+  // the UI on it so the empty state never flashes and the auto-load below
+  // always runs against restored data.
+  const hydrated = useProjectHydrated();
 
   useEffect(() => {
     if (!project && projects.length > 0) {
-      loadProject(projects[projects.length - 1].id);
+      const mostRecent = [...projects].sort((a, b) => b.updatedAt - a.updatedAt)[0];
+      loadProject(mostRecent.id);
     }
   }, [project, projects, loadProject]);
 
@@ -72,24 +65,17 @@ export default function EditorPage() {
           </Link>
         </div>
         {projects.length > 0 && (
-          <div className="mt-10">
-            <p className="eyebrow mb-3">Reopen a recent book</p>
-            <div className="space-y-1.5 text-left">
-              {projects.map((p) => (
-                <Button
-                  key={p.id}
-                  variant="ghost"
-                  onClick={() => loadProject(p.id)}
-                  className="w-full justify-start"
-                >
-                  <BookOpen className="mr-2 h-4 w-4 text-brass" aria-hidden="true" />
-                  <span className="truncate">{p.name}</span>
-                  <span className="ml-auto shrink-0 text-xs text-muted-foreground">
-                    {p.chapters.length} ch.
-                  </span>
-                </Button>
-              ))}
-            </div>
+          <div className="mt-10 flex justify-center">
+            <Link
+              href="/library"
+              className={buttonVariants({ variant: "ghost", size: "sm" })}
+            >
+              <Library className="mr-2 h-4 w-4 text-brass" aria-hidden="true" />
+              Browse your library
+              <span className="ml-2 text-xs text-muted-foreground">
+                {projects.length} book{projects.length === 1 ? "" : "s"}
+              </span>
+            </Link>
           </div>
         )}
       </div>

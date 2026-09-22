@@ -10,12 +10,20 @@ File drop / picker
     → parseFile (src/lib/parsers/index.ts)  [pdf|docx|markdown|html|txt|epub]
       → ParseResult { chapters, metadata, cover?, warnings }
   → Zustand store importChapters (src/lib/store/project.ts)
-    → persisted to localStorage ("pagesmith-projects")
+    → persisted to IndexedDB ("pagesmith-db" / store "kv")
+
+Library (src/app/library/page.tsx)
+  → lists every project, newest first
+  → loadProject(id) → Editor or Reading Room;  deleteProject(id)
+  → clears the book's reading bookmark (src/lib/utils/reading-progress.ts)
 
 Editor (src/app/editor/page.tsx)
   → ChapterList / ChapterEditor / MetadataForm / CoverUpload / AIPanel
-  → PreviewDialog (read-only render)
   → useExport → buildEpub (src/lib/epub/generate.ts) → JSZip → Blob download
+
+Reading Room (src/app/read/page.tsx → src/components/reader/ReaderRoom.tsx)
+  → chapter HTML + active TOC, prev/next, progress
+  → bookmarks { chapterId, scrollRatio } per project in localStorage
 
 Checker (src/app/check/page.tsx)
   → validateEpub (src/lib/epub/validate.ts) → ValidationResult
@@ -42,14 +50,21 @@ Settings (src/app/settings/page.tsx)
   `persist.hasHydrated()` because IDB hydrates asynchronously.
 - `partialize` persists `projects`, `project`, `activeChapterId` only.
 - AI settings stored separately under `pagesmith-ai-settings` (localStorage —
-  tiny, read synchronously). Theme likewise.
+  tiny, read synchronously). Theme likewise. Reading bookmarks and reader
+  typography live in localStorage too (`pagesmith-reading-progress`,
+  `pagesmith-reader-prefs`).
+- Async hydration is gated in the UI via `useProjectHydrated()`
+  (`src/hooks/useHydrated.ts`) — `/editor`, `/library`, `/read` render a
+  loading state until `persist.hasHydrated()` is true.
 
 ## Routing
 
 - `/` landing (Hero, ProcessPipeline, FormatStrip, FeatureBento, AIBand, FinalCta)
-- `/convert` format hub
+- `/convert` import desk (single or multi-file → merged book)
 - `/convert/[format]` dynamic parse page (pdf, docx, markdown, html, txt, epub)
+- `/library` shelf of every book (open, read, delete)
 - `/editor` multi-chapter editor
+- `/read` reading room for the active (or most recent) book
 - `/check` EPUB validator
 - `/settings` AI provider config
 

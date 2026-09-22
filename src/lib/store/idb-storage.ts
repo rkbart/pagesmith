@@ -23,6 +23,15 @@ const DB_NAME = "pagesmith-db";
 const STORE_NAME = "kv";
 const DB_VERSION = 1;
 
+/**
+ * IndexedDB only exists in browsers. During SSR/prerender the adapter is
+ * imported and read from, so every method no-ops (quietly — this is expected,
+ * not a failure) and hydration completes with the initial state.
+ */
+function hasIDB(): boolean {
+  return typeof indexedDB !== "undefined";
+}
+
 let dbPromise: Promise<IDBPDatabase> | null = null;
 
 function getDB(): Promise<IDBPDatabase> {
@@ -40,6 +49,8 @@ function getDB(): Promise<IDBPDatabase> {
 
 export const idbStorage: StateStorage = {
   async getItem(name: string): Promise<string | null> {
+    if (!hasIDB()) return null;
+
     try {
       const db = await getDB();
       const value = (await db.get(STORE_NAME, name)) as string | undefined;
@@ -71,6 +82,7 @@ export const idbStorage: StateStorage = {
   },
 
   async setItem(name: string, value: string): Promise<void> {
+    if (!hasIDB()) return;
     try {
       const db = await getDB();
       await db.put(STORE_NAME, value, name);
@@ -83,6 +95,7 @@ export const idbStorage: StateStorage = {
   },
 
   async removeItem(name: string): Promise<void> {
+    if (!hasIDB()) return;
     try {
       const db = await getDB();
       await db.delete(STORE_NAME, name);

@@ -2,8 +2,10 @@ import Link from "next/link";
 import { Feather, Coffee, CodeXml, ShieldCheck } from "lucide-react";
 
 const productLinks = [
+  { href: "/library", label: "Library" },
   { href: "/convert", label: "Import & Convert" },
   { href: "/editor", label: "Editor" },
+  { href: "/read", label: "Reading Room" },
   { href: "/check", label: "EPUB Checker" },
   { href: "/settings", label: "Settings" },
 ];
