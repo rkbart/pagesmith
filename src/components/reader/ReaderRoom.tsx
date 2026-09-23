@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
+  ArrowUp,
   BookOpenCheck,
   ChevronLeft,
   ChevronRight,
@@ -109,6 +110,40 @@ function TypeControls({
         </Button>
       </div>
     </div>
+  );
+}
+
+/**
+ * Back-to-top button for the floating reader controls. Owns its scroll
+ * listener and visibility state so long-chapter scrolling never re-renders
+ * the reader itself — the updater bails out unless visibility flips.
+ */
+function BackToTopButton() {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () =>
+      setVisible((was) => {
+        const next = window.scrollY > 600;
+        return was === next ? was : next;
+      });
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  if (!visible) return null;
+  return (
+    <Button
+      variant="outline"
+      size="icon"
+      aria-label="Back to top"
+      title="Back to top"
+      onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+      className="pointer-events-auto size-11 shrink-0 rounded-full border bg-background shadow-panel"
+    >
+      <ArrowUp />
+    </Button>
   );
 }
 
@@ -434,6 +469,7 @@ export function ReaderRoom({ project }: { project: Project }) {
 
           <main className="min-w-0">
             {chapter ? (
+              <>
               <article className="mx-auto max-w-[68ch]">
                 <header className="mb-8">
                   <p className="eyebrow mb-2">Chapter {index + 1}</p>
@@ -452,31 +488,58 @@ export function ReaderRoom({ project }: { project: Project }) {
                   dangerouslySetInnerHTML={{ __html: chapter.content }}
                 />
 
-                <nav className="mt-14 flex items-center justify-between gap-3 border-t pt-6">
-                  <Button variant="outline" onClick={goPrev} disabled={index === 0}>
-                    <ChevronLeft />
-                    Previous
-                  </Button>
-                  <span className="code hidden text-muted-foreground sm:block">
-                    {index + 1} of {total}
-                  </span>
-                  <Button
-                    variant="outline"
-                    onClick={goNext}
-                    disabled={index >= total - 1}
-                  >
-                    Next
-                    <ChevronRight />
-                  </Button>
-                </nav>
-
                 {index === total - 1 && (
-                  <p className="mt-6 flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+                  <p className="mt-14 flex items-center justify-center gap-1.5 border-t pt-6 text-xs text-muted-foreground">
                     <BookOpenCheck className="size-4 text-brass" aria-hidden="true" />
                     The end of the book — your place is saved.
                   </p>
                 )}
+
+                {/* ---- Floating chapter controls: centered pill + back-to-top.
+                    Sticky (not fixed) so the row stays aligned with the
+                    article column on wide screens with the TOC rail — a
+                    viewport-fixed bar would center on the window instead.
+                    Solid backgrounds avoid repaint cost while scrolling;
+                    pointer-events pass through except on the controls. */}
+                <div className="pointer-events-none sticky bottom-4 z-30 mt-8 flex items-center justify-center">
+                  {/* Relative anchor: the pill stays centered while the
+                      back-to-top button floats beside it out-of-flow, so the
+                      nav never budges when the button appears. */}
+                  <div className="pointer-events-auto relative">
+                    <div
+                      className="flex items-center gap-1 rounded-full border bg-background p-1.5 shadow-panel"
+                      role="group"
+                      aria-label="Chapter navigation"
+                    >
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={goPrev}
+                        disabled={index === 0}
+                        aria-label="Previous chapter"
+                      >
+                        <ChevronLeft />
+                      </Button>
+                      <span className="code min-w-16 px-1 text-center text-muted-foreground">
+                        {index + 1} of {total}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={goNext}
+                        disabled={index >= total - 1}
+                        aria-label="Next chapter"
+                      >
+                        <ChevronRight />
+                      </Button>
+                    </div>
+                    <div className="absolute top-1/2 left-full ml-2 -translate-y-1/2">
+                      <BackToTopButton />
+                    </div>
+                  </div>
+                </div>
               </article>
+              </>
             ) : (
               <p className="py-20 text-center text-muted-foreground">
                 This book has no chapters to read yet.
