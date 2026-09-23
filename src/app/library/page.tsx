@@ -390,11 +390,10 @@ export default function LibraryPage() {
     >
       <div className="mb-10 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="eyebrow mb-2">The shelf</p>
-          <h1 className="heading-lg">Your library</h1>
+          <h1 className="heading-lg">Library</h1>
           <p className="body-md-loose mt-2 text-muted-foreground">
             {shelf.length} book{shelf.length === 1 ? "" : "s"} · {totalChapters}{" "}
-            chapter{totalChapters === 1 ? "" : "s"} — all kept on this device.
+            chapter{totalChapters === 1 ? "" : "s"} · Stored locally
           </p>
         </div>
 
