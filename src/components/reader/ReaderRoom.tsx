@@ -1,5 +1,6 @@
 "use client";
 
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
@@ -127,6 +128,7 @@ export function ReaderRoom({ project }: { project: Project }) {
   const [prefs, setPrefs] = useState<ReaderPrefs>(() => loadReaderPrefs());
   const [tocOpen, setTocOpen] = useState(false);
   const saveTimer = useRef<number | null>(null);
+
 
   const chapters = useMemo(
     () => [...project.chapters].sort((a, b) => a.order - b.order),

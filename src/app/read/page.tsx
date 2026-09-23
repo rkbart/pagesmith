@@ -5,11 +5,9 @@ import Link from "next/link";
 import { BookOpen, Feather, Loader2 } from "lucide-react";
 import { ReaderRoom } from "@/components/reader/ReaderRoom";
 import { buttonVariants } from "@/components/ui/button";
-import { useProjectHydrated } from "@/hooks/useHydrated";
 import { useProjectStore } from "@/lib/store/project";
 
 export default function ReadPage() {
-  const hydrated = useProjectHydrated();
   const { project: active, projects, loadProject } = useProjectStore();
 
   /* With no book explicitly chosen, open the most recently edited one — the
@@ -20,19 +18,14 @@ export default function ReadPage() {
     return [...projects].sort((a, b) => b.updatedAt - a.updatedAt)[0];
   }, [active, projects]);
 
+  /* When the store has loaded a different book than the reader is showing,
+     switch to it. Navigating to `/read?book=<id>` is not a thing here — we
+     always read the shelf's most recently touched book, so a changed `target`
+     means a book was opened elsewhere (the library or the editor). */
   useEffect(() => {
-    if (!hydrated || !target || active?.id === target.id) return;
+    if (!target || active?.id === target.id) return;
     loadProject(target.id);
-  }, [hydrated, target, active, loadProject]);
-
-  if (!hydrated) {
-    return (
-      <div className="container flex items-center justify-center gap-2 py-32 text-muted-foreground">
-        <Loader2 className="size-5 animate-spin text-brass" aria-hidden="true" />
-        Opening the reading room…
-      </div>
-    );
-  }
+  }, [target, active, loadProject]);
 
   if (!target) {
     return (
