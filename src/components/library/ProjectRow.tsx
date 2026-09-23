@@ -3,19 +3,24 @@
 import { useState } from "react";
 import { BookOpen, Pencil, Trash2 } from "lucide-react";
 import { CoverArt } from "./CoverArt";
+import { CollectionSelect } from "./CollectionSelect";
 import { DeleteProjectDialog } from "./DeleteProjectDialog";
 import { Button } from "@/components/ui/button";
 import { chapterLabel, formatUpdated } from "@/lib/utils/text";
-import type { Project } from "@/types/project";
+import type { Collection, Project } from "@/types/project";
 
 /** Dense shelf row — same actions as the card, tuned for scanning long lists. */
 export function ProjectRow({
   project,
+  collections,
+  onAssign,
   onOpen,
   onRead,
   onDelete,
 }: {
   project: Project;
+  collections: Collection[];
+  onAssign: (collectionId: string | null) => void;
   onOpen: (id: string) => void;
   onRead: (id: string) => void;
   onDelete: (id: string) => void;
@@ -51,6 +56,13 @@ export function ProjectRow({
       </div>
 
       <div className="flex shrink-0 items-center gap-1.5">
+        <CollectionSelect
+          bookTitle={title}
+          collectionId={project.collectionId}
+          collections={collections}
+          onAssign={onAssign}
+          className="hidden h-8 max-w-36 text-xs md:inline-flex"
+        />
         <Button
           size="sm"
           variant="brass"

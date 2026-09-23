@@ -6,10 +6,16 @@ import { useRouter } from "next/navigation";
 import {
   BookOpen,
   BookUp,
+  ChevronDown,
+  ChevronRight,
   Feather,
+  Folder,
+  FolderOpen,
+  FolderPlus,
   LayoutGrid,
   List,
   Loader2,
+  Plus,
   Search,
   Upload,
   X,
@@ -23,7 +29,9 @@ import { useProjectHydrated } from "@/hooks/useHydrated";
 import { detectFormat, parseFile } from "@/lib/parsers";
 import { useProjectStore } from "@/lib/store/project";
 import {
+  loadCollapsedFolders,
   loadLibraryView,
+  saveCollapsedFolders,
   saveLibraryView,
   type LibraryView,
 } from "@/lib/utils/library-prefs";
@@ -36,13 +44,32 @@ const PER_PAGE: Record<LibraryView, number> = { cards: 12, list: 10 };
 export default function LibraryPage() {
   const router = useRouter();
   const hydrated = useProjectHydrated();
-  const { projects, loadProject, deleteProject, createProject } = useProjectStore();
+  const {
+    projects,
+    collections,
+    loadProject,
+    deleteProject,
+    createProject,
+    createCollection,
+    deleteCollection,
+    assignProject,
+  } = useProjectStore();
 
   // Reading localStorage in an initializer is safe here: everything below the
   // hydration gate renders on the client only, so server HTML can't disagree.
   const [view, setView] = useState<LibraryView>(() => loadLibraryView());
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
+  // Ids of collapsed folders — everything else renders expanded.
+  const [collapsedIds, setCollapsedIds] = useState<string[]>(() => loadCollapsedFolders());
+  const [showNewCollection, setShowNewCollection] = useState(false);
+  const [newCollectionName, setNewCollectionName] = useState("");
+  // Two-step delete confirm for collections (no dialog needed).
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
+  useEffect(() => {
+    saveCollapsedFolders(collapsedIds);
+  }, [collapsedIds]);
 
   useEffect(() => {
     saveLibraryView(view);
@@ -63,18 +90,48 @@ export default function LibraryPage() {
   // effects causes cascading renders). Deletions or tightened searches can
   // strand the page past the end, so `paginate` clamps and we render the
   // clamped value directly.
+  const collectionNameById = useMemo(
+    () => new Map(collections.map((c) => [c.id, c.name])),
+    [collections]
+  );
+  // Searching spans the whole shelf (folders included); browsing shows
+  // folders with their members plus the paginated unsorted shelf.
   const filtered = useMemo(
-    () => shelf.filter((p) => matchesQuery(p, query)),
-    [shelf, query]
+    () =>
+      shelf.filter((p) =>
+        matchesQuery(p, query, collectionNameById.get(p.collectionId ?? "") ?? "")
+      ),
+    [shelf, query, collectionNameById]
+  );
+  const unsorted = useMemo(
+    () =>
+      shelf.filter(
+        (p) => !p.collectionId || !collectionNameById.has(p.collectionId)
+      ),
+    [shelf, collectionNameById]
   );
   const perPage = PER_PAGE[view];
-  const { items: visible, safePage, totalPages } = useMemo(
+  // Search results paginate across the whole shelf; while browsing, folders
+  // list all their members and only the unsorted shelf paginates.
+  const {
+    items: searchVisible,
+    safePage: searchSafePage,
+    totalPages: searchTotalPages,
+  } = useMemo(
     () => paginate(filtered, page, perPage),
     [filtered, page, perPage]
   );
-  const currentPage = page !== safePage ? safePage : page;
-
+  const {
+    items: unsortedVisible,
+    safePage: unsortedSafePage,
+    totalPages: unsortedTotalPages,
+  } = useMemo(
+    () => paginate(unsorted, page, perPage),
+    [unsorted, page, perPage]
+  );
   const searching = query.trim().length > 0;
+  const safePage = searching ? searchSafePage : unsortedSafePage;
+  const currentPage = page !== safePage ? safePage : page;
 
   const handleQuery = (next: string) => {
     setQuery(next);
@@ -85,6 +142,86 @@ export default function LibraryPage() {
     setView(next);
     setPage(1);
   };
+
+  const toggleFolder = (id: string) => {
+    setCollapsedIds((prev) =>
+      prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]
+    );
+  };
+
+  const handleCreateCollection = () => {
+    const name = newCollectionName.trim();
+    if (!name) return;
+    const id = createCollection(name);
+    setNewCollectionName("");
+    setShowNewCollection(false);
+    // A new folder opens expanded so the books filed into it are visible.
+    setCollapsedIds((prev) => prev.filter((c) => c !== id));
+  };
+
+  const handleDeleteCollection = (id: string) => {
+    if (confirmDeleteId !== id) {
+      setConfirmDeleteId(id);
+      // Disarm the two-step confirm if the user walks away.
+      setTimeout(() => {
+        setConfirmDeleteId((armed) => (armed === id ? null : armed));
+      }, 3000);
+      return;
+    }
+    setConfirmDeleteId(null);
+    deleteCollection(id);
+    setCollapsedIds((prev) => prev.filter((c) => c !== id));
+  };
+
+  // Per-collection book counts for the folder headers.
+  const collectionCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    let unsorted = 0;
+    for (const p of shelf) {
+      if (p.collectionId && collectionNameById.has(p.collectionId)) {
+        counts.set(p.collectionId, (counts.get(p.collectionId) ?? 0) + 1);
+      } else {
+        unsorted += 1;
+      }
+    }
+    return { counts, unsorted };
+  }, [shelf, collectionNameById]);
+
+  // One renderer for every book list on this page — search results, folder
+  // members, and the unsorted shelf all share cards/rows + assignment.
+  const bookList = (books: typeof shelf) =>
+    view === "cards" ? (
+      <div
+        className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4"
+        aria-live="polite"
+      >
+        {books.map((project) => (
+          <ProjectCard
+            key={project.id}
+            project={project}
+            collections={collections}
+            onAssign={(collectionId) => assignProject(project.id, collectionId)}
+            onOpen={openBook}
+            onRead={readBook}
+            onDelete={deleteBook}
+          />
+        ))}
+      </div>
+    ) : (
+      <div className="flex flex-col gap-2" aria-live="polite">
+        {books.map((project) => (
+          <ProjectRow
+            key={project.id}
+            project={project}
+            collections={collections}
+            onAssign={(collectionId) => assignProject(project.id, collectionId)}
+            onOpen={openBook}
+            onRead={readBook}
+            onDelete={deleteBook}
+          />
+        ))}
+      </div>
+    );
 
   const openBook = (id: string) => {
     loadProject(id);
@@ -273,6 +410,58 @@ export default function LibraryPage() {
         </p>
       )}
 
+      {/* ---- Collections ------------------------------------------------- */}
+      <div className="mb-6 flex flex-wrap items-center gap-2" aria-label="Collections">
+        <span className="eyebrow mr-1">Collections</span>
+        {showNewCollection ? (
+          <span className="inline-flex items-center gap-1.5 rounded-lg border border-dashed p-1 pl-2">
+            <Input
+              autoFocus
+              value={newCollectionName}
+              onChange={(e) => setNewCollectionName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleCreateCollection();
+                if (e.key === "Escape") {
+                  setShowNewCollection(false);
+                  setNewCollectionName("");
+                }
+              }}
+              placeholder="Collection name"
+              aria-label="New collection name"
+              className="h-8 w-40"
+            />
+            <Button
+              size="sm"
+              className="h-8"
+              onClick={handleCreateCollection}
+              disabled={!newCollectionName.trim()}
+            >
+              <Plus /> Add
+            </Button>
+            <Button
+              size="icon-sm"
+              variant="ghost"
+              aria-label="Cancel new collection"
+              onClick={() => {
+                setShowNewCollection(false);
+                setNewCollectionName("");
+              }}
+            >
+              <X />
+            </Button>
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setShowNewCollection(true)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-dashed px-2.5 py-1.5 text-sm text-muted-foreground transition-colors hover:border-muted-foreground/40 hover:text-foreground"
+          >
+            <FolderPlus className="size-3.5" aria-hidden="true" />
+            New collection
+          </button>
+        )}
+      </div>
+
       <div className="relative mb-8 max-w-md">
         <Search
           className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
@@ -284,7 +473,7 @@ export default function LibraryPage() {
           onChange={(e) => handleQuery(e.target.value)}
           placeholder="Search titles, authors, chapters…"
           aria-label="Search your library"
-          className="bg-card pr-9 pl-9 shadow-panel"
+          className="bg-card pr-9 pl-9 shadow-panel [&::-webkit-search-cancel-button]:hidden"
         />
         {searching && (
           <button
@@ -298,61 +487,119 @@ export default function LibraryPage() {
         )}
       </div>
 
-      {filtered.length === 0 ? (
-        <div className="rounded-xl border bg-card p-10 text-center shadow-panel">
-          <p className="font-heading text-lg">Nothing on this shelf matches</p>
-          <p className="body-md-loose mt-2 text-muted-foreground">
-            No titles, authors, or chapter text contain “{query.trim()}”.
-          </p>
-          <Button variant="outline" className="mt-6" onClick={() => handleQuery("")}>
-            <X />
-            Clear the search
-          </Button>
-        </div>
-      ) : (
-        <>
-          {searching && (
+      {searching ? (
+        filtered.length === 0 ? (
+          <div className="rounded-xl border bg-card p-10 text-center shadow-panel">
+            <p className="font-heading text-lg">Nothing on this shelf matches</p>
+            <p className="body-md-loose mt-2 text-muted-foreground">
+              No titles, authors, collections, or chapter text contain “{query.trim()}”.
+            </p>
+            <Button variant="outline" className="mt-6" onClick={() => handleQuery("")}>
+              <X />
+              Clear the search
+            </Button>
+          </div>
+        ) : (
+          <>
             <p className="mb-4 text-sm text-muted-foreground" aria-live="polite">
               {filtered.length} match{filtered.length === 1 ? "" : "es"} for
               “{query.trim()}”
-              {totalPages > 1 ? ` · page ${currentPage} of ${totalPages}` : ""}
+              {searchTotalPages > 1 ? ` · page ${currentPage} of ${searchTotalPages}` : ""}
+            </p>
+            {bookList(searchVisible)}
+            <ShelfPagination
+              page={currentPage}
+              totalPages={searchTotalPages}
+              onChange={setPage}
+            />
+          </>
+        )
+      ) : (
+        <>
+          {collections.map((c) => {
+            const members = shelf.filter((p) => p.collectionId === c.id);
+            const collapsed = collapsedIds.includes(c.id);
+            return (
+              <section
+                key={c.id}
+                className="mb-6 overflow-hidden rounded-2xl border bg-card shadow-panel"
+                aria-label={`Collection ${c.name}`}
+              >
+                <div
+                  className={`flex items-center gap-1 px-2 py-1.5 ${
+                    collapsed ? "" : "border-b bg-muted/50"
+                  }`}
+                >                  <button
+                    type="button"
+                    onClick={() => toggleFolder(c.id)}
+                    aria-expanded={!collapsed}
+                    className="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-muted/50"
+                  >
+                    {collapsed ? (
+                      <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                    ) : (
+                      <ChevronDown className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                    )}
+                    {collapsed ? (
+                      <Folder className="size-4 shrink-0 text-brass" aria-hidden="true" />
+                    ) : (
+                      <FolderOpen className="size-4 shrink-0 text-brass" aria-hidden="true" />
+                    )}
+                    <span className="font-heading min-w-0 flex-1 truncate text-base">
+                      {c.name}
+                    </span>
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      {members.length} book{members.length === 1 ? "" : "s"}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteCollection(c.id)}
+                    aria-label={
+                      confirmDeleteId === c.id
+                        ? `Confirm delete collection ${c.name} (books are kept)`
+                        : `Delete collection ${c.name} (books are kept)`
+                    }
+                    title="Delete collection — its books are kept"
+                    className={`mr-1 shrink-0 rounded-md p-1.5 text-xs transition-colors ${
+                      confirmDeleteId === c.id
+                        ? "bg-destructive font-medium text-destructive-foreground"
+                        : "text-muted-foreground hover:text-destructive"
+                    }`}
+                  >
+                    {confirmDeleteId === c.id ? (
+                      "Sure?"
+                    ) : (
+                      <X className="size-4" aria-hidden="true" />
+                    )}
+                  </button>
+                </div>
+                {collapsed ? null : (
+                  <div className="bg-muted/30 p-3 sm:p-4">
+                    {members.length === 0 ? (
+                      <p className="rounded-xl border border-dashed bg-card px-4 py-6 text-center text-sm text-muted-foreground">
+                        Empty folder — file books here with the collection
+                        picker on any book.
+                      </p>
+                    ) : (
+                      bookList(members)
+                    )}
+                  </div>
+                )}
+              </section>
+            );
+          })}
+
+          {collections.length > 0 && (
+            <p className="eyebrow mb-3">
+              Unsorted · {collectionCounts.unsorted} book
+              {collectionCounts.unsorted === 1 ? "" : "s"}
             </p>
           )}
-
-          {view === "cards" ? (
-            <div
-              className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4"
-              aria-live="polite"
-            >
-              {visible.map((project) => (
-                <ProjectCard
-                  key={project.id}
-                  project={project}
-                  onOpen={openBook}
-                  onRead={readBook}
-                  onDelete={deleteBook}
-                />
-              ))}
-
-
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2" aria-live="polite">
-              {visible.map((project) => (
-                <ProjectRow
-                  key={project.id}
-                  project={project}
-                  onOpen={openBook}
-                  onRead={readBook}
-                  onDelete={deleteBook}
-                />
-              ))}
-            </div>
-          )}
-
+          {bookList(unsortedVisible)}
           <ShelfPagination
             page={currentPage}
-            totalPages={totalPages}
+            totalPages={unsortedTotalPages}
             onChange={setPage}
           />
         </>

@@ -6,7 +6,8 @@ import {
   perfLog,
   perfMeasure,
 } from "@/lib/utils/perf";
-import type { Project, Chapter, BookMetadata, BookCover, TOCEntry } from "@/types/project";
+import type { Project, Chapter, BookMetadata, BookCover, Collection, TOCEntry } from "@/types/project";
+import { uniqueName } from "@/lib/utils/naming";
 
 function generateId(): string {
   return Math.random().toString(36).substring(2, 9);
@@ -23,6 +24,7 @@ function buildToc(chapters: Chapter[]): TOCEntry[] {
 interface ProjectState {
   project: Project | null;
   projects: Project[];
+  collections: Collection[];
   activeChapterId: string | null;
   isDirty: boolean;
   /** True once the shelf has been restored from IndexedDB (see below). */
@@ -45,23 +47,39 @@ interface ProjectState {
   importChapters: (chapters: Chapter[], metadata?: Partial<BookMetadata>, cover?: BookCover) => void;
   rebuildToc: () => void;
   save: () => void;
+  /** Create a shelf collection (folder). Names dedupe like book titles. */
+  createCollection: (name: string) => string;
+  /** Delete a collection — its books are kept and become unsorted. */
+  deleteCollection: (id: string) => void;
+  /** File a book into a collection, or pass null to unsort it. */
+  assignProject: (projectId: string, collectionId: string | null) => void;
 }
 
 export const useProjectStore = create<ProjectState>()(
   (set, get) => ({
       project: null,
       projects: [],
+      collections: [],
       activeChapterId: null,
       isDirty: false,
       hydrated: false,
 
       createProject: (name) => {
         const now = Date.now();
+        // Duplicate guardrail: importing "Dune" twice shelves "Dune" and
+        // "Dune (1)" instead of two indistinguishable books. Compares against
+        // display titles (metadata title wins on the shelf) and raw names.
+        const taken: string[] = [];
+        for (const p of get().projects) {
+          taken.push(p.name);
+          if (p.metadata.title) taken.push(p.metadata.title);
+        }
+        const unique = uniqueName(name, taken);
         const project: Project = {
           id: generateId(),
-          name,
+          name: unique,
           metadata: {
-            title: name,
+            title: unique,
             author: "",
             language: "en",
             description: "",
@@ -285,6 +303,57 @@ export const useProjectStore = create<ProjectState>()(
       save: () => {
         set({ isDirty: false });
       },
+
+      createCollection: (name) => {
+        const id = generateId();
+        const unique = uniqueName(
+          name.trim() || "Untitled collection",
+          get().collections.map((c) => c.name)
+        );
+        set((state) => ({
+          collections: [
+            ...state.collections,
+            { id, name: unique, createdAt: Date.now() },
+          ],
+        }));
+        return id;
+      },
+
+      deleteCollection: (id) => {
+        set((state) => ({
+          collections: state.collections.filter((c) => c.id !== id),
+          // Books survive — they just become unsorted.
+          projects: state.projects.map((p) =>
+            p.collectionId === id ? { ...p, collectionId: null } : p
+          ),
+          project:
+            state.project?.collectionId === id
+              ? { ...state.project, collectionId: null }
+              : state.project,
+        }));
+      },
+
+      assignProject: (projectId, collectionId) => {
+        if (collectionId && !get().collections.some((c) => c.id === collectionId)) {
+          return;
+        }
+        set((state) => ({
+          projects: state.projects.map((p) =>
+            p.id === projectId
+              ? { ...p, collectionId, updatedAt: Date.now() }
+              : p
+          ),
+          project:
+            state.project?.id === projectId
+              ? {
+                  ...state.project,
+                  collectionId,
+                  updatedAt: Date.now(),
+                }
+              : state.project,
+          isDirty: true,
+        }));
+      },
     })
 );
 
@@ -310,10 +379,12 @@ const SAVE_DEBOUNCE_MS = 1000;
 
 function snapshot(state: ProjectState): {
   projects: Project[];
+  collections: Collection[];
   activeChapterId: string | null;
 } {
   return {
     projects: state.projects,
+    collections: state.collections,
     activeChapterId: state.activeChapterId,
   };
 }
@@ -360,14 +431,18 @@ async function hydrateFromStorage(): Promise<void> {
     if (raw) {
       type PersistedShape = {
         projects?: Project[];
+        collections?: Collection[];
         activeChapterId?: string | null;
       };
       const parsed = JSON.parse(raw) as { state?: PersistedShape } & PersistedShape;
       // Accept the persist-middleware envelope (`{state, version}`); fall
-      // back to a bare snapshot shape for forward tolerance.
+      // back to a bare snapshot shape for forward tolerance. Older payloads
+      // have no `collections` — they simply start with an empty shelf folder
+      // list, and books without `collectionId` read as unsorted.
       const saved: PersistedShape = parsed.state ?? parsed;
       useProjectStore.setState({
         projects: Array.isArray(saved?.projects) ? saved.projects : [],
+        collections: Array.isArray(saved?.collections) ? saved.collections : [],
         activeChapterId: saved?.activeChapterId ?? null,
       });
     }

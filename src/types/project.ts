@@ -29,8 +29,17 @@ export interface Project {
   chapters: Chapter[];
   cover?: BookCover;
   toc: TOCEntry[];
+  /** Shelf organization — null/undefined means "unsorted". */
+  collectionId?: string | null;
   createdAt: number;
   updatedAt: number;
+}
+
+/** A named folder on the library shelf. Books keep existing when one is deleted. */
+export interface Collection {
+  id: string;
+  name: string;
+  createdAt: number;
 }
 
 export interface TOCEntry {

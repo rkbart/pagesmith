@@ -22,9 +22,10 @@ Failed files are skipped and reported per row.
 - Card or list shelf of every book, newest first — toggle with the
   `LayoutGrid` / `List` segmented control; the choice persists in
   `localStorage["pagesmith-library-view"]` (`src/lib/utils/library-prefs.ts`)
-- Search across titles, authors, and chapter text (`matchesQuery` in
-  `src/lib/utils/library-search.ts`): case-insensitive, HTML tags stripped
-  before matching so chapter bodies hit; empty state with a clear button
+- Search across titles, authors, collection names, and chapter text
+  (`matchesQuery` in `src/lib/utils/library-search.ts`): case-insensitive,
+  HTML tags stripped before matching so chapter bodies hit; empty state with
+  a clear button
 - Pagination via `ShelfPagination` (12/page in cards, 10/page in list):
   first/prev/numbered/next/last with windowed numbers (`1 … 5 6 7 … 12`);
   phones get a compact "Page X of Y" label; new queries restart on page one
@@ -37,6 +38,15 @@ Failed files are skipped and reported per row.
 - "Import EPUB" button (header + empty state) parses an `.epub` straight onto
   the shelf and opens it in the reading room; other formats go through the
   import desk at `/convert`
+- Collections: expandable folders for grouping similar titles — folder
+  headers with book counts and chevron toggle (collapse state persists),
+  inline create, two-step delete (books are kept, become unsorted),
+  per-book assignment picker on cards and rows; the unsorted shelf keeps its
+  pagination while folders list all members; persisted with the shelf
+- Duplicate guardrails: importing a title that's already shelved shelves
+  `Title (1)`, `Title (2)`, … instead (case-insensitive, existing suffixes
+  collapse); same rule for collection names (`uniqueName` in
+  `src/lib/utils/naming.ts`)
 - No blank books: there is no "New book" action — the shelf only holds books
   that came from an import, and the empty state routes to the import desk or
   the EPUB picker

@@ -26,10 +26,14 @@ export function plainText(html: string): string {
 
 /**
  * Does this book match a free-text query? Case-insensitive substring match
- * across title, display name, author, chapter titles, and chapter text.
- * An empty/blank query matches everything.
+ * across title, display name, author, collection name, chapter titles, and
+ * chapter text. An empty/blank query matches everything.
  */
-export function matchesQuery(project: Project, query: string): boolean {
+export function matchesQuery(
+  project: Project,
+  query: string,
+  collectionName = ""
+): boolean {
   const needle = query.trim().toLowerCase();
   if (!needle) return true;
 
@@ -37,6 +41,7 @@ export function matchesQuery(project: Project, query: string): boolean {
     project.metadata.title,
     project.name,
     project.metadata.author,
+    collectionName,
     ...project.chapters.flatMap((chapter) => [
       chapter.title,
       plainText(chapter.content),

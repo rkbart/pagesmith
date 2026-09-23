@@ -3,18 +3,23 @@
 import { useState } from "react";
 import { BookOpen, Pencil, Trash2 } from "lucide-react";
 import { CoverArt } from "./CoverArt";
+import { CollectionSelect } from "./CollectionSelect";
 import { DeleteProjectDialog } from "./DeleteProjectDialog";
 import { Button } from "@/components/ui/button";
 import { formatUpdated } from "@/lib/utils/text";
-import type { Project } from "@/types/project";
+import type { Collection, Project } from "@/types/project";
 
 export function ProjectCard({
   project,
+  collections,
+  onAssign,
   onOpen,
   onRead,
   onDelete,
 }: {
   project: Project;
+  collections: Collection[];
+  onAssign: (collectionId: string | null) => void;
   onOpen: (id: string) => void;
   onRead: (id: string) => void;
   onDelete: (id: string) => void;
@@ -60,7 +65,15 @@ export function ProjectCard({
           </Button>
         </div>
 
-        <div className="mt-auto flex items-center gap-2">
+        <div className="mt-auto flex flex-col gap-2">
+          <CollectionSelect
+            bookTitle={title}
+            collectionId={project.collectionId}
+            collections={collections}
+            onAssign={onAssign}
+            className="h-8 w-full text-xs"
+          />
+          <div className="flex items-center gap-2">
           <Button
             size="sm"
             variant="brass"
@@ -81,6 +94,7 @@ export function ProjectCard({
             <Pencil />
             Edit
           </Button>
+          </div>
         </div>
       </div>
 
