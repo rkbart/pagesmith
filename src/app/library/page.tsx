@@ -1,15 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   BookOpen,
+  BookUp,
   Feather,
   LayoutGrid,
   List,
   Loader2,
-  Plus,
   Search,
   Upload,
   X,
@@ -20,6 +20,7 @@ import { ShelfPagination } from "@/components/library/ShelfPagination";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useProjectHydrated } from "@/hooks/useHydrated";
+import { detectFormat, parseFile } from "@/lib/parsers";
 import { useProjectStore } from "@/lib/store/project";
 import {
   loadLibraryView,
@@ -100,10 +101,78 @@ export default function LibraryPage() {
     deleteProject(id);
   };
 
-  const startBlank = () => {
-    createProject("Untitled Book");
-    router.push("/editor");
+  // ---- Import an .epub directly onto the shelf -----------------------------
+  const epubInputRef = useRef<HTMLInputElement>(null);
+  const [importing, setImporting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+
+  const handleEpubFile = async (file: File) => {
+    if (importing) return;
+    setImporting(true);
+    setImportError(null);
+    try {
+      if (detectFormat(file.name) !== "epub") {
+        throw new Error("Only .epub files can be imported here — other formats go through Import.");
+      }
+      const result = await parseFile(file, "epub");
+      if (result.chapters.length === 0) {
+        throw new Error("That EPUB has no readable chapters.");
+      }
+
+      // Drop empty strings so the parser's blanks don't clobber the name we
+      // just derived from the file (importChapters merges metadata on top).
+      const metadata = Object.fromEntries(
+        Object.entries(result.metadata).filter(([, value]) => value !== "" && value != null)
+      );
+
+      const fallback = file.name.replace(/\.epub$/i, "").trim();
+      const name = (result.metadata.title || fallback || "Imported Book").trim();
+
+      // createProject makes a draft; importChapters then shelves it — an
+      // import is never an empty book, so it always lands on the shelf.
+      createProject(name);
+      useProjectStore
+        .getState()
+        .importChapters(result.chapters, metadata, result.cover);
+      router.push("/read");
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : "Could not import that EPUB.");
+    } finally {
+      setImporting(false);
+    }
   };
+
+  const epubPicker = (
+    <input
+      ref={epubInputRef}
+      type="file"
+      accept=".epub,application/epub+zip"
+      className="hidden"
+      onChange={(e) => {
+        const file = e.target.files?.[0];
+        if (file) void handleEpubFile(file);
+        e.target.value = "";
+      }}
+    />
+  );
+
+  const importEpubButton = (
+    <Button
+      variant="outline"
+      size="sm"
+      className="shrink-0"
+      disabled={importing}
+      onClick={() => epubInputRef.current?.click()}
+      title="Import an EPUB book"
+    >
+      {importing ? (
+        <Loader2 className="animate-spin" aria-hidden="true" />
+      ) : (
+        <BookUp aria-hidden="true" />
+      )}
+      <span className="hidden sm:inline">{importing ? "Importing…" : "Import EPUB"}</span>
+    </Button>
+  );
 
   if (!hydrated) {
     return (
@@ -130,11 +199,22 @@ export default function LibraryPage() {
             <Upload />
             Import a manuscript
           </Link>
-          <Button variant="outline" size="lg" onClick={startBlank}>
-            <Plus />
-            Start a blank book
+          <Button
+            variant="outline"
+            size="lg"
+            title="Import an EPUB book"
+            onClick={() => epubInputRef.current?.click()}
+          >
+            <BookUp />
+            Import EPUB
           </Button>
         </div>
+        {epubPicker}
+        {importError && (
+          <p className="mt-4 text-sm text-destructive" role="alert">
+            {importError}
+          </p>
+        )}
       </div>
     );
   }
@@ -156,6 +236,7 @@ export default function LibraryPage() {
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
+          {importEpubButton}
           <div
             role="group"
             aria-label="Shelf layout"
@@ -182,13 +263,15 @@ export default function LibraryPage() {
               <List />
             </Button>
           </div>
-
-          <Button variant="brass" onClick={startBlank}>
-            <Plus />
-            New book
-          </Button>
         </div>
       </div>
+
+      {epubPicker}
+      {importError && (
+        <p className="mb-4 flex items-center gap-1.5 text-sm text-destructive" role="alert">
+          {importError}
+        </p>
+      )}
 
       <div className="relative mb-8 max-w-md">
         <Search
@@ -251,21 +334,7 @@ export default function LibraryPage() {
                 />
               ))}
 
-              {!searching && currentPage === totalPages && (
-                <button
-                  type="button"
-                  onClick={startBlank}
-                  className="flex min-h-56 flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-brass/30 bg-paper p-6 text-center text-muted-foreground transition-all hover:-translate-y-0.5 hover:border-brass/60 hover:bg-brass/5"
-                >
-                  <span className="grid size-12 place-items-center rounded-xl bg-brass/10">
-                    <Plus className="size-5 text-brass" aria-hidden="true" />
-                  </span>
-                  <span className="font-heading text-base text-foreground">
-                    Start a new book
-                  </span>
-                  <span className="text-xs">Blank pages, ready to fill</span>
-                </button>
-              )}
+
             </div>
           ) : (
             <div className="flex flex-col gap-2" aria-live="polite">
@@ -278,17 +347,6 @@ export default function LibraryPage() {
                   onDelete={deleteBook}
                 />
               ))}
-
-              {!searching && currentPage === totalPages && (
-                <button
-                  type="button"
-                  onClick={startBlank}
-                  className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-brass/30 bg-paper p-4 text-sm text-muted-foreground transition-colors hover:border-brass/60 hover:bg-brass/5 hover:text-foreground"
-                >
-                  <Plus className="size-4 text-brass" aria-hidden="true" />
-                  Start a new book
-                </button>
-              )}
             </div>
           )}
 

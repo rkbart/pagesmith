@@ -22,6 +22,10 @@ interface ProjectState {
   isDirty: boolean;
 
   createProject: (name: string) => void;
+  /** Drop an unsaved draft from memory (a book already on the shelf is kept). */
+  discardDraft: () => void;
+  /** Put the open book onto the shelf (persisted via the `projects` array). */
+  shelveProject: () => void;
   loadProject: (id: string) => void;
   deleteProject: (id: string) => void;
   setMetadata: (meta: Partial<BookMetadata>) => void;
@@ -60,11 +64,29 @@ export const useProjectStore = create<ProjectState>()(
           createdAt: now,
           updatedAt: now,
         };
-        set((state) => ({
+        set({
           project,
-          projects: [...state.projects.filter((p) => p.id !== project.id), project],
           activeChapterId: null,
           isDirty: true,
+        });
+      },
+
+      discardDraft: () => {
+        const { project } = get();
+        if (!project) return;
+        // Only an unsaved draft can be discarded — anything already on the
+        // shelf is left alone.
+        if (get().projects.some((p) => p.id === project.id)) return;
+        set({ project: null, activeChapterId: null, isDirty: false });
+      },
+
+      shelveProject: () => {
+        const { project } = get();
+        if (!project) return;
+        set((state) => ({
+          projects: state.projects.some((p) => p.id === project.id)
+            ? state.projects.map((p) => (p.id === project.id ? project : p))
+            : [...state.projects, project],
         }));
       },
 
@@ -102,6 +124,7 @@ export const useProjectStore = create<ProjectState>()(
             isDirty: true,
           };
         });
+        get().shelveProject();
       },
 
       setCover: (cover) => {
@@ -114,6 +137,7 @@ export const useProjectStore = create<ProjectState>()(
             isDirty: true,
           };
         });
+        get().shelveProject();
       },
 
       addChapter: (title = "New Chapter", content = "", level = 1) => {
@@ -141,6 +165,7 @@ export const useProjectStore = create<ProjectState>()(
             isDirty: true,
           };
         });
+        get().shelveProject();
         return id;
       },
 
@@ -162,6 +187,7 @@ export const useProjectStore = create<ProjectState>()(
             isDirty: true,
           };
         });
+        get().shelveProject();
       },
 
       removeChapter: (id) => {
@@ -184,6 +210,7 @@ export const useProjectStore = create<ProjectState>()(
             isDirty: true,
           };
         });
+        get().shelveProject();
       },
 
       reorderChapters: (fromIndex, toIndex) => {
@@ -205,6 +232,7 @@ export const useProjectStore = create<ProjectState>()(
             isDirty: true,
           };
         });
+        get().shelveProject();
       },
 
       setActiveChapter: (id) => set({ activeChapterId: id }),
@@ -227,6 +255,7 @@ export const useProjectStore = create<ProjectState>()(
             isDirty: true,
           };
         });
+        get().shelveProject();
       },
 
       rebuildToc: () => {
@@ -243,6 +272,7 @@ export const useProjectStore = create<ProjectState>()(
             isDirty: true,
           };
         });
+        get().shelveProject();
       },
 
       save: () => {
@@ -253,8 +283,12 @@ export const useProjectStore = create<ProjectState>()(
       name: "pagesmith-projects",
       storage: createJSONStorage(() => idbStorage),
       partialize: (state) => ({
+        // Only shelved books are persisted. The open `project` is deliberately
+        // excluded: it may be an empty draft (never shelved), and persisting it
+        // would resurrect ghost books on reload. Shelved books re-sync via
+        // `shelveProject` on every edit, and the editor/read pages re-open the
+        // most recent shelved book when `project` is null.
         projects: state.projects,
-        project: state.project,
         activeChapterId: state.activeChapterId,
       }),
     }

@@ -24,7 +24,10 @@ On `/library` every book sits on a shelf, newest first:
   always start back on page one.
 - **Read** opens the reading room (it resumes the page you stopped on),
   **Edit** opens the studio, the trash icon deletes (with confirmation).
-- The **New book / Start a new book** tile creates a blank project.
+- **Import EPUB** (next to the layout toggle) parses an `.epub` straight onto
+  the shelf and opens it in the reading room.
+- There's deliberately no blank-book button: books enter the shelf only
+  through an import (manuscript or EPUB), so empty projects never pile up.
 
 ## 2. Edit your book
 

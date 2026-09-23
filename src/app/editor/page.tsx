@@ -18,7 +18,6 @@ export default function EditorPage() {
     project,
     projects,
     activeChapterId,
-    createProject,
     loadProject,
     addChapter,
   } = useProjectStore();
@@ -54,30 +53,16 @@ export default function EditorPage() {
         </div>
         <h1 className="heading-lg mb-3">The bench is clear</h1>
         <p className="body-md-loose text-muted-foreground mb-8">
-          Open a book or bring in a manuscript to start binding.
+          Bring in a manuscript or an EPUB to start binding.
         </p>
         <div className="flex flex-col justify-center gap-3 sm:flex-row">
-          <Button onClick={() => createProject("Untitled Book")} variant="brass" size="lg">
-            <Plus className="mr-2 h-4 w-4" /> New book
-          </Button>
-          <Link href="/convert" className={buttonVariants({ variant: "outline", size: "lg" })}>
-            Import a file
+          <Link href="/convert" className={buttonVariants({ variant: "brass", size: "lg" })}>
+            <Plus className="mr-2 h-4 w-4" /> Import a manuscript
+          </Link>
+          <Link href="/library" className={buttonVariants({ variant: "outline", size: "lg" })}>
+            <Library className="mr-2 h-4 w-4" aria-hidden="true" /> Browse your library
           </Link>
         </div>
-        {projects.length > 0 && (
-          <div className="mt-10 flex justify-center">
-            <Link
-              href="/library"
-              className={buttonVariants({ variant: "ghost", size: "sm" })}
-            >
-              <Library className="mr-2 h-4 w-4 text-brass" aria-hidden="true" />
-              Browse your library
-              <span className="ml-2 text-xs text-muted-foreground">
-                {projects.length} book{projects.length === 1 ? "" : "s"}
-              </span>
-            </Link>
-          </div>
-        )}
       </div>
     );
   }

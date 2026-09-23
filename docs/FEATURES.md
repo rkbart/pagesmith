@@ -15,7 +15,7 @@ Failed files are skipped and reported per row.
 | Markdown | `src/lib/parsers/markdown.ts` | YAML frontmatter for metadata; splits on `#`–`###` |
 | HTML | `src/lib/parsers/html.ts` | Strips nav/ads/scripts; splits on h1/h2; extracts meta tags |
 | TXT | `src/lib/parsers/txt.ts` | Pattern-based chapter lines; paragraph → HTML; dialogue detection |
-| EPUB | `src/lib/parsers/epub.ts` | Unzips, reads OPF/spine, extracts chapters + cover |
+| EPUB | `src/lib/parsers/epub.ts` | Unzips, reads OPF/spine, inlines images + CSS as data URLs, splits spine files at h1/h2 into chapters, extracts cover |
 
 ## Library (`/library`)
 
@@ -34,8 +34,12 @@ Failed files are skipped and reported per row.
   look like they render the title twice
 - Open in the editor, open in the reading room, or delete via the shared
   `DeleteProjectDialog` (chapter count + cover note, destructive confirm)
-- "New book" tile creates a blank project and drops you in the editor
-- Empty state routes to the import desk or a blank book
+- "Import EPUB" button (header + empty state) parses an `.epub` straight onto
+  the shelf and opens it in the reading room; other formats go through the
+  import desk at `/convert`
+- No blank books: there is no "New book" action — the shelf only holds books
+  that came from an import, and the empty state routes to the import desk or
+  the EPUB picker
 
 ## Editor
 

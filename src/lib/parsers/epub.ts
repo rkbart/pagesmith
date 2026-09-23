@@ -1,6 +1,54 @@
-import type { ParseResult, Chapter, BookMetadata, BookCover } from "@/types/project";
+import type { ParseResult, BookMetadata, BookCover } from "@/types/project";
 import { generateId } from "@/lib/utils/text";
 import type JSZip from "jszip";
+
+/**
+ * EPUB import: unzip, follow the OPF spine, and inline every referenced
+ * resource (images, stylesheets) as a data URL so chapters render standalone
+ * in the reader/editor — no external files, no broken links.
+ *
+ * Each spine item is split at top-level headings into sub-chapters when it
+ * contains more than one (many EPUBs pack a whole book into a few XHTML
+ * files).
+ */
+
+const IMAGE_EXTS = [".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp", ".avif"];
+
+function mimeForImage(href: string, declared?: string): string {
+  if (declared?.startsWith("image/")) return declared;
+  const lower = href.toLowerCase();
+  if (lower.endsWith(".png")) return "image/png";
+  if (lower.endsWith(".gif")) return "image/gif";
+  if (lower.endsWith(".webp")) return "image/webp";
+  if (lower.endsWith(".svg")) return "image/svg+xml";
+  if (lower.endsWith(".bmp")) return "image/bmp";
+  if (lower.endsWith(".avif")) return "image/avif";
+  return "image/jpeg";
+}
+
+/** `base + relative` with `.`/`..`/fragment/query/leading-slash handling. */
+export function resolveEpubPath(base: string, relative: string): string {
+  const rel = relative.split("#")[0].split("?")[0];
+  if (!rel) return "";
+  if (rel.startsWith("/")) return rel.substring(1);
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(rel)) return rel; // absolute URL
+  const parts = (base + rel).split("/");
+  const resolved: string[] = [];
+  for (const part of parts) {
+    if (part === "..") {
+      resolved.pop();
+    } else if (part !== "." && part !== "") {
+      resolved.push(part);
+    }
+  }
+  return resolved.join("/");
+}
+
+/** Directory prefix of a zip path, including the trailing slash (or ""). */
+function dirOf(path: string): string {
+  return path.includes("/") ? path.substring(0, path.lastIndexOf("/") + 1) : "";
+}
+
 
 export async function parseEPUB(file: File): Promise<ParseResult> {
   const warnings: string[] = [];
@@ -21,20 +69,27 @@ export async function parseEPUB(file: File): Promise<ParseResult> {
 
   const parser = new DOMParser();
   const opfDoc = parser.parseFromString(opfContent, "application/xml");
-  const opfDir = opfPath.includes("/") ? opfPath.substring(0, opfPath.lastIndexOf("/") + 1) : "";
+  const opfDir = dirOf(opfPath);
 
   const metadata = extractEpubMetadata(opfDoc);
   const manifest = extractManifest(opfDoc);
   const spine = extractSpine(opfDoc, manifest);
   const cover = await extractCover(zip, manifest, opfPath);
 
-  const chapters: Chapter[] = [];
+  const chapters: { id: string; title: string; content: string; order: number; level: number }[] = [];
   let order = 0;
+  const push = (title: string, content: string) => {
+    if (!content.trim()) return;
+    chapters.push({ id: generateId(), title, content, order: order++, level: 1 });
+  };
 
   for (const item of spine) {
-    if (!item.href.endsWith(".xhtml") && !item.href.endsWith(".html")) continue;
+    const lower = item.href.toLowerCase();
+    const isXhtml =
+      lower.endsWith(".xhtml") || lower.endsWith(".html") || lower.endsWith(".htm");
+    if (!isXhtml) continue;
 
-    const fullPath = resolvePath(opfDir, item.href);
+    const fullPath = resolveEpubPath(opfDir, item.href);
     const fileContent = await zip.file(fullPath)?.async("string");
     if (!fileContent) {
       warnings.push(`Could not read chapter file: ${item.href}`);
@@ -42,18 +97,17 @@ export async function parseEPUB(file: File): Promise<ParseResult> {
     }
 
     const chapDoc = parser.parseFromString(fileContent, "application/xhtml+xml");
-    const title = extractChapterTitle(chapDoc);
-    const content = extractChapterContent(chapDoc);
+    const baseDir = dirOf(fullPath);
 
-    if (content.trim()) {
-      chapters.push({
-        id: generateId(),
-        title,
-        content,
-        order: order++,
-        level: 1,
-      });
+    // Inline images/styles into self-contained HTML, then split at headings.
+    await inlineResources(chapDoc, zip, baseDir, warnings);
+    const fallbackTitle = extractChapterTitle(chapDoc);
+    const parts = splitAtHeadings(chapDoc, fallbackTitle);
+    if (parts.length === 0) {
+      warnings.push(`No readable content in: ${item.href}`);
+      continue;
     }
+    for (const part of parts) push(part.title, part.html);
   }
 
   if (chapters.length === 0) {
@@ -135,28 +189,28 @@ async function extractCover(
   manifest: { id: string; href: string; mediaType: string }[],
   opfPath: string
 ): Promise<BookCover | undefined> {
-  const opfDir = opfPath.includes("/") ? opfPath.substring(0, opfPath.lastIndexOf("/") + 1) : "";
+  const opfDir = dirOf(opfPath);
 
-  const coverItem = manifest.find(
-    (m) =>
-      m.mediaType.startsWith("image/") &&
-      (m.id.toLowerCase().includes("cover") || m.href.toLowerCase().includes("cover"))
-  );
+  const isImage = (href: string) => {
+    const lower = href.toLowerCase().split("#")[0].split("?")[0];
+    return IMAGE_EXTS.some((ext) => lower.endsWith(ext));
+  };
+
+  const coverItem =
+    manifest.find(
+      (m) =>
+        m.mediaType.startsWith("image/") &&
+        (m.id.toLowerCase().includes("cover") || m.href.toLowerCase().includes("cover"))
+    ) ?? manifest.find((m) => m.mediaType.startsWith("image/") && isImage(m.href));
 
   if (!coverItem) return undefined;
 
-  const fullPath = resolvePath(opfDir, coverItem.href);
-  const file = zip.file(fullPath);
-  if (!file) return undefined;
+  const fullPath = resolveEpubPath(opfDir, coverItem.href);
+  const dataUrl = await readImageAsDataUrl(zip, fullPath);
+  if (!dataUrl) return undefined;
 
-  const blob = await file.async("blob");
-  const dataUrl = await new Promise<string>((resolve) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result as string);
-    reader.readAsDataURL(blob);
-  });
-
-  return { data: dataUrl, mimeType: coverItem.mediaType };
+  const mime = dataUrl.match(/^data:(.*?);/)?.[1] ?? coverItem.mediaType;
+  return { data: dataUrl, mimeType: mime };
 }
 
 function extractChapterTitle(doc: Document): string {
@@ -164,21 +218,175 @@ function extractChapterTitle(doc: Document): string {
   return h1?.textContent?.trim() ?? "Untitled";
 }
 
-function extractChapterContent(doc: Document): string {
-  const body = doc.querySelector("body") ?? doc.documentElement;
-  return body.innerHTML;
+/**
+ * Rewrite a chapter document so it stands alone: every `<img src>` and
+ * inline-SVG `<image href>` becomes a data URL from the zip, and stylesheet
+ * links become inline `<style>`. Remote URLs, scripts, forms, and media are
+ * dropped — the reader renders untrusted book HTML, so only static content
+ * survives.
+ */
+async function inlineResources(
+  doc: Document,
+  zip: JSZip,
+  baseDir: string,
+  warnings: string[]
+): Promise<void> {
+  doc
+    .querySelectorAll("script, form, audio, video, object, embed, iframe")
+    .forEach((el) => el.remove());
+  doc.querySelectorAll("*").forEach((el) => {
+    for (const attr of Array.from(el.attributes)) {
+      if (attr.name.startsWith("on")) el.removeAttribute(attr.name);
+    }
+  });
+
+  for (const link of Array.from(doc.querySelectorAll('link[rel="stylesheet"]'))) {
+    const href = link.getAttribute("href");
+    if (!href || /^(https?:|data:|blob:)/i.test(href)) {
+      link.remove();
+      continue;
+    }
+    const css = await readText(zip, resolveEpubPath(baseDir, href));
+    if (css == null) {
+      link.remove();
+      continue;
+    }
+    const style = doc.createElement("style");
+    style.textContent = css;
+    link.replaceWith(style);
+  }
+
+  const targets: { el: Element; attr: string; href: string }[] = [];
+  doc.querySelectorAll("img[src]").forEach((el) => {
+    const src = el.getAttribute("src") ?? "";
+    if (!src || /^(data:|blob:)/i.test(src)) return;
+    if (/^https?:/i.test(src)) {
+      el.removeAttribute("src");
+      return;
+    }
+    targets.push({ el, attr: "src", href: src });
+  });
+  doc.querySelectorAll("image[href], image[xlink\\:href]").forEach((el) => {
+    const href = el.getAttribute("href") ?? el.getAttribute("xlink:href") ?? "";
+    if (!href || /^(https?:|data:|blob:)/i.test(href)) return;
+    targets.push({ el, attr: el.hasAttribute("href") ? "href" : "xlink:href", href });
+  });
+
+  let missing = 0;
+  await Promise.all(
+    targets.map(async ({ el, attr, href }) => {
+      const dataUrl = await readImageAsDataUrl(zip, resolveEpubPath(baseDir, href));
+      if (dataUrl) {
+        el.setAttribute(attr, dataUrl);
+        if (el.tagName.toLowerCase() === "img") {
+          const existing = el.getAttribute("style") ?? "";
+          el.setAttribute(
+            "style",
+            `${existing}${existing && !existing.trimEnd().endsWith(";") ? ";" : ""}max-width:100%;height:auto;`
+          );
+        }
+      } else {
+        missing += 1;
+        const alt = el.getAttribute("alt");
+        if (alt) {
+          const span = doc.createElement("span");
+          span.textContent = `[image: ${alt}]`;
+          el.replaceWith(span);
+        } else {
+          el.remove();
+        }
+      }
+    })
+  );
+  if (missing > 0) {
+    warnings.push(
+      `${missing} image${missing === 1 ? "" : "s"} referenced files missing from the EPUB and were removed`
+    );
+  }
+
+  doc.querySelectorAll("a[href]").forEach((a) => {
+    const href = a.getAttribute("href") ?? "";
+    if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(href) && !href.startsWith("#")) {
+      const span = doc.createElement("span");
+      span.innerHTML = a.innerHTML;
+      a.replaceWith(span);
+    }
+  });
 }
 
-function resolvePath(base: string, relative: string): string {
-  if (relative.startsWith("/")) return relative.substring(1);
-  const parts = (base + relative).split("/");
-  const resolved: string[] = [];
-  for (const part of parts) {
-    if (part === "..") {
-      resolved.pop();
-    } else if (part !== "." && part !== "") {
-      resolved.push(part);
-    }
+async function readText(zip: JSZip, path: string): Promise<string | null> {
+  if (!path) return null;
+  try {
+    return (await zip.file(path)?.async("string")) ?? null;
+  } catch {
+    return null;
   }
-  return resolved.join("/");
 }
+
+async function readImageAsDataUrl(zip: JSZip, path: string): Promise<string | null> {
+  if (!path) return null;
+  try {
+    const entry = zip.file(path);
+    if (!entry) return null;
+    const blob = await entry.async("blob");
+    const mime = blob.type.startsWith("image/") ? blob.type : mimeForImage(path);
+    const buffer = await blob.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    let binary = "";
+    const CHUNK = 0x8000;
+    for (let i = 0; i < bytes.length; i += CHUNK) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+    }
+    const base64 =
+      typeof btoa !== "undefined"
+        ? btoa(binary)
+        : Buffer.from(binary, "binary").toString("base64");
+    return `data:${mime};base64,${base64}`;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Split a chapter document at h1/h2 boundaries. EPUBs range from "one file
+ * per chapter" to "the whole book in three files" — without splitting, an
+ * imported book renders as a few giant chapters and the TOC is useless.
+ * The preamble before the first heading stays attached to the first part.
+ */
+function splitAtHeadings(doc: Document, fallbackTitle: string): { title: string; html: string }[] {
+  const body = doc.querySelector("body") ?? doc.documentElement;
+  const kids = Array.from(body.children);
+
+  const isSplitHeading = (el: Element): boolean => {
+    const tag = el.tagName.toLowerCase();
+    return (tag === "h1" || tag === "h2") && !!el.textContent?.trim();
+  };
+
+  if (!kids.some((el, i) => i > 0 && isSplitHeading(el))) {
+    const title = body.querySelector("h1, h2, h3")?.textContent?.trim() || fallbackTitle;
+    const html = body.innerHTML;
+    return html.trim() ? [{ title, html }] : [];
+  }
+
+  const parts: { title: string; html: string }[] = [];
+  let current: Element[] = [];
+  let currentTitle = fallbackTitle;
+  const flush = () => {
+    const html = current.map((el) => el.outerHTML).join("\n");
+    if (html.trim()) parts.push({ title: currentTitle, html });
+    current = [];
+  };
+
+  for (const el of kids) {
+    if (isSplitHeading(el) && current.length > 0) {
+      flush();
+      currentTitle = el.textContent?.trim() ?? fallbackTitle;
+    } else if (isSplitHeading(el)) {
+      currentTitle = el.textContent?.trim() ?? fallbackTitle;
+    }
+    current.push(el);
+  }
+  flush();
+  return parts;
+}
+
