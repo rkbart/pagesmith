@@ -18,10 +18,11 @@ OEBPS/images/cover.<ext>    (optional)
 
 ### content.opf
 - `version="3.0"`, `unique-identifier="BookId"`
-- dc:title, dc:creator, dc:language, optional dc:description/isbn/publisher/subject, dc:date
+- dc:title (+ typed main/subtitle pair when a subtitle is set), dc:creator, dc:contributors with marc:relators roles (translator `trl`, editor `edt`, illustrator `ill`, cover designer `cov`, producer `bkp`), dc:language, optional dc:description/isbn/publisher/subject, dc:rights, dc:audience, dc:date
+- Extra keywords → additional dc:subject entries; category → dc:subject + `authority` (BISAC) refine; edition → `dcterms:hasVersion`; series → `belongs-to-collection` (+ `collection-type: series`, `group-position`)
 - `dcterms:modified` meta
 - manifest: nav.xhtml (`properties="nav"`), chapter items, cover (`properties="cover-image"`), styles.css
-- spine: `<itemref>` per chapter in order
+- spine: `<itemref>` per chapter in order; `page-progression-direction="rtl"` when set
 
 ### nav.xhtml
 `<nav epub:type="toc">` with `<ol>` of chapter links, indented by `level`.

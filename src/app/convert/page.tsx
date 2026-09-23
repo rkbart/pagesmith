@@ -53,10 +53,12 @@ function mergeMetadata(
 ): Partial<BookMetadata> {
   const merged = { ...base };
   (Object.keys(next) as (keyof BookMetadata)[]).forEach((key) => {
-    const value = next[key];
-    const current = merged[key];
-    if ((current === undefined || current === "") && value !== undefined && value !== "") {
-      merged[key] = value;
+    // All BookMetadata values are strings, so a record view is exact.
+    const record = merged as Record<string, string | undefined>;
+    const value = record[key as string];
+    const incoming = next[key] as string | undefined;
+    if ((value === undefined || value === "") && incoming !== undefined && incoming !== "") {
+      record[key as string] = incoming;
     }
   });
   return merged;

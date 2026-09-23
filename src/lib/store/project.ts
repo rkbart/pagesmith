@@ -267,9 +267,16 @@ export const useProjectStore = create<ProjectState>()(
       importChapters: (chapters, metadata, cover) => {
         set((state) => {
           if (!state.project) return state;
+          // Drop undefined fields: parsers omit absent metadata, and spreading
+          // them would clobber defaults with undefined.
+          const clean = metadata
+            ? Object.fromEntries(
+                Object.entries(metadata).filter(([, v]) => v !== undefined)
+              )
+            : undefined;
           const project: Project = {
             ...state.project,
-            metadata: { ...state.project.metadata, ...metadata },
+            metadata: { ...state.project.metadata, ...clean },
             cover: cover ?? state.project.cover,
             chapters,
             toc: buildToc(chapters),

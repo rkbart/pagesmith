@@ -23,6 +23,50 @@ function buildContentOpf(project: Project, chapterFiles: { id: string; href: str
     .map((f) => `    <itemref idref="${f.id}"/>`)
     .join("\n");
 
+  // Contributors with marc:relators role refines (translator, editor,
+  // illustrator, cover designer, producer). Ids are unique per document.
+  let contributorSeq = 0;
+  const contributor = (name: string | undefined, role: string): string => {
+    if (!name?.trim()) return "";
+    contributorSeq += 1;
+    const id = `contrib${contributorSeq}`;
+    return `    <dc:contributor id="${id}">${escapeXml(name.trim())}</dc:contributor>\n    <meta refines="#${id}" property="role" scheme="marc:relators">${role}</meta>`;
+  };
+  const contributors = [
+    contributor(metadata.translator, "trl"),
+    contributor(metadata.editor, "edt"),
+    contributor(metadata.illustrator, "ill"),
+    contributor(metadata.coverDesigner, "cov"),
+    contributor(metadata.producer, "bkp"),
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  // Extra discovery keywords: comma-separated input → dc:subject entries.
+  const keywords = (metadata.keywords ?? "")
+    .split(",")
+    .map((k) => k.trim())
+    .filter(Boolean)
+    .map((k) => `    <dc:subject>${escapeXml(k)}</dc:subject>`)
+    .join("\n");
+
+  // Titles: a subtitle upgrades both to typed titles (EPUB 3 title-type).
+  const titles = metadata.subtitle?.trim()
+    ? `    <dc:title id="title-main">${escapeXml(metadata.title)}</dc:title>\n    <meta refines="#title-main" property="title-type">main</meta>\n    <dc:title id="title-sub">${escapeXml(metadata.subtitle.trim())}</dc:title>\n    <meta refines="#title-sub" property="title-type">subtitle</meta>`
+    : `    <dc:title>${escapeXml(metadata.title)}</dc:title>`;
+
+  // Series membership (EPUB 3 collections).
+  const series = metadata.seriesName?.trim()
+    ? `    <meta property="belongs-to-collection" id="series">${escapeXml(metadata.seriesName.trim())}</meta>\n    <meta refines="#series" property="collection-type">series</meta>${
+        metadata.seriesPosition?.trim()
+          ? `\n    <meta refines="#series" property="group-position">${escapeXml(metadata.seriesPosition.trim())}</meta>`
+          : ""
+      }`
+    : "";
+
+  const direction =
+    metadata.direction === "rtl" ? ` page-progression-direction="rtl"` : "";
+
   const coverItem = hasCover
     ? `\n    <item id="cover-image" href="images/cover.${getCoverExt(project)}" media-type="image/${getCoverExt(project)}" properties="cover-image"/>`
     : "";
@@ -33,22 +77,27 @@ function buildContentOpf(project: Project, chapterFiles: { id: string; href: str
 <package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="BookId" xml:lang="${metadata.language || "en"}">
   <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
     <dc:identifier id="BookId">${escapeXml(identifier)}</dc:identifier>
-    <dc:title>${escapeXml(metadata.title)}</dc:title>
+${titles}
     <dc:creator>${escapeXml(metadata.author)}</dc:creator>
-    <dc:language>${metadata.language || "en"}</dc:language>
+${contributors ? `${contributors}\n` : ""}    <dc:language>${metadata.language || "en"}</dc:language>
     ${metadata.description ? `<dc:description>${escapeXml(metadata.description)}</dc:description>` : ""}
     ${metadata.isbn ? `<dc:identifier id="ISBN">${escapeXml(metadata.isbn)}</dc:identifier>` : ""}
     ${metadata.publisher ? `<dc:publisher>${escapeXml(metadata.publisher)}</dc:publisher>` : ""}
     <dc:date>${date}</dc:date>
+    ${metadata.edition?.trim() ? `<meta property="dcterms:hasVersion">${escapeXml(metadata.edition.trim())}</meta>` : ""}
+    ${metadata.rights?.trim() ? `<dc:rights>${escapeXml(metadata.rights.trim())}</dc:rights>` : ""}
+    ${metadata.audience?.trim() ? `<dc:audience>${escapeXml(metadata.audience.trim())}</dc:audience>` : ""}
     ${metadata.subject ? `<dc:subject>${escapeXml(metadata.subject)}</dc:subject>` : ""}
-    <meta property="dcterms:modified">${new Date().toISOString().replace(/\.\d+Z$/, "Z")}</meta>
+${keywords ? `${keywords}\n` : ""}    ${metadata.category?.trim() ? `<dc:subject id="subject-cat">${escapeXml(metadata.category.trim())}</dc:subject>` : ""}
+    ${metadata.category?.trim() ? `<meta refines="#subject-cat" property="authority">BISAC</meta>` : ""}
+${series ? `${series}\n` : ""}    <meta property="dcterms:modified">${new Date().toISOString().replace(/\.\d+Z$/, "Z")}</meta>
   </metadata>
   <manifest>
 ${navItem}
 ${manifestItems}${coverItem}
     <item id="css" href="styles.css" media-type="text/css"/>
   </manifest>
-  <spine>
+  <spine${direction}>
 ${spineItems}
   </spine>
 </package>`;
@@ -220,7 +269,7 @@ export async function buildEpub(project: Project): Promise<BuildResult> {
     compressionOptions: { level: 6 },
   });
 
-  const filename = `${sanitizeFilename(project.metadata.title || project.name)}.epub`;
+  const filename = `${sanitizeFilename(project.metadata.exportFileName?.trim() || project.metadata.title || project.name)}.epub`;
 
   return { blob, filename };
 }

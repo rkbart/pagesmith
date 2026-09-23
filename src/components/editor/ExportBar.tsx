@@ -16,10 +16,14 @@ import {
 
 export function ExportBar({
   project,
+  metaOpen = false,
+  aiOpen = false,
   onToggleMeta,
   onToggleAI,
 }: {
   project: { name: string; metadata: { title: string } };
+  metaOpen?: boolean;
+  aiOpen?: boolean;
   onToggleMeta: () => void;
   onToggleAI: () => void;
 }) {
@@ -58,10 +62,20 @@ export function ExportBar({
           </h1>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" onClick={onToggleMeta}>
+          <Button
+            variant={metaOpen ? "secondary" : "outline"}
+            size="sm"
+            onClick={onToggleMeta}
+            aria-expanded={metaOpen}
+          >
             <Settings2 className="h-4 w-4 mr-1" /> Metadata
           </Button>
-          <Button variant="outline" size="sm" onClick={onToggleAI}>
+          <Button
+            variant={aiOpen ? "secondary" : "outline"}
+            size="sm"
+            onClick={onToggleAI}
+            aria-expanded={aiOpen}
+          >
             <Sparkles className="h-4 w-4 mr-1" /> AI Tools
           </Button>
 

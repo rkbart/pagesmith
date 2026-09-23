@@ -197,22 +197,111 @@ async function findOpfPath(zip: JSZip): Promise<string | null> {
 }
 
 function extractEpubMetadata(opfDoc: Document): Partial<BookMetadata> {
-  const ns = "http://www.idpf.org/2007/opf";
-  const dc = "http://purl.org/dc/elements/1.1/";
-
   const getText = (tag: string): string => {
     const el = opfDoc.querySelector(`${tag}, dc\\:${tag}`);
     return el?.textContent?.trim() ?? "";
   };
 
+  // Index <meta refines="#id" property="..."> values for typed lookups
+  // (subtitle titles, contributor roles, series membership, authority).
+  const refines = new Map<string, string>();
+  opfDoc.querySelectorAll("meta[refines][property]").forEach((m) => {
+    const key = `${m.getAttribute("refines")}|${m.getAttribute("property")}`;
+    if (!refines.has(key)) refines.set(key, m.textContent?.trim() ?? "");
+  });
+  const refined = (id: string, property: string): string | undefined => {
+    const v = refines.get(`#${id}|${property}`);
+    return v || undefined;
+  };
+  const metaText = (property: string): string | undefined => {
+    const el = opfDoc.querySelector(`meta[property="${property}"]`);
+    const v = el?.textContent?.trim();
+    return v || undefined;
+  };
+
+  // Titles: a typed subtitle upgrades the pair (main keeps the title slot).
+  let title = getText("title");
+  let subtitle: string | undefined;
+  opfDoc.querySelectorAll("dc\\:title, title").forEach((el) => {
+    const id = el.getAttribute("id");
+    if (!id) return;
+    const text = el.textContent?.trim();
+    if (!text) return;
+    const kind = refined(id, "title-type");
+    if (kind === "subtitle" && !subtitle) subtitle = text;
+    else if (kind === "main") title = text;
+  });
+
+  // Contributors keyed by marc:relators role (trl/edt/ill/cov/bkp).
+  const roleToField = {
+    trl: "translator",
+    edt: "editor",
+    ill: "illustrator",
+    cov: "coverDesigner",
+    bkp: "producer",
+  } as const;
+  type RoleField = (typeof roleToField)[keyof typeof roleToField];
+  const contributors: Partial<Record<RoleField, string>> = {};
+  opfDoc.querySelectorAll("dc\\:contributor, contributor").forEach((el) => {
+    const id = el.getAttribute("id");
+    const field = id ? roleToField[refined(id, "role") as keyof typeof roleToField] : undefined;
+    const name = el.textContent?.trim();
+    if (field && name && !contributors[field]) contributors[field] = name;
+  });
+
+  // Series membership (EPUB 3 collections).
+  let seriesName: string | undefined;
+  let seriesPosition: string | undefined;
+  opfDoc.querySelectorAll('meta[property="belongs-to-collection"]').forEach((m) => {
+    if (seriesName) return;
+    const id = m.getAttribute("id");
+    const kind = id ? refined(id, "collection-type") : undefined;
+    if (kind && kind !== "series") return;
+    const name = m.textContent?.trim();
+    if (!name) return;
+    seriesName = name;
+    seriesPosition = id ? refined(id, "group-position") : undefined;
+  });
+
+  // Subjects: authority-refined entry is the category, first plain entry is
+  // the subject, the rest collapse to comma-separated keywords.
+  let subject = "";
+  let category: string | undefined;
+  const keywordList: string[] = [];
+  opfDoc.querySelectorAll("dc\\:subject, subject").forEach((el) => {
+    const text = el.textContent?.trim();
+    if (!text) return;
+    const id = el.getAttribute("id");
+    if (id && refined(id, "authority")) {
+      if (!category) category = text;
+      return;
+    }
+    if (!subject) subject = text;
+    else keywordList.push(text);
+  });
+
+  const spineEl = opfDoc.querySelector("spine");
+
   return {
-    title: getText("title"),
+    title,
     author: getText("creator"),
     language: getText("language") || "en",
     description: getText("description"),
     isbn: getText("identifier"),
     publisher: getText("publisher"),
-    subject: getText("subject"),
+    subject,
+    date: getText("date") || undefined,
+    subtitle,
+    direction:
+      spineEl?.getAttribute("page-progression-direction") === "rtl" ? "rtl" : undefined,
+    edition: metaText("dcterms:hasVersion"),
+    rights: getText("rights") || undefined,
+    audience: getText("audience") || undefined,
+    keywords: keywordList.length > 0 ? keywordList.join(", ") : undefined,
+    category,
+    seriesName,
+    seriesPosition,
+    ...contributors,
   };
 }
 

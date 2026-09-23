@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useProjectStore } from "@/lib/store/project";
 import { useProjectHydrated } from "@/hooks/useHydrated";
 import { ChapterList } from "@/components/editor/ChapterList";
@@ -23,6 +23,30 @@ export default function EditorPage() {
   } = useProjectStore();
   const [showMeta, setShowMeta] = useState(false);
   const [showAI, setShowAI] = useState(false);
+  const metaRef = useRef<HTMLDivElement>(null);
+  const aiRef = useRef<HTMLDivElement>(null);
+
+  // The panels render below the (often very long) chapter editor — scroll
+  // them into view on open, otherwise the toggle looks dead.
+  const toggleMeta = () => {
+    const next = !showMeta;
+    setShowMeta(next);
+    if (next) {
+      requestAnimationFrame(() =>
+        metaRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+      );
+    }
+  };
+
+  const toggleAI = () => {
+    const next = !showAI;
+    setShowAI(next);
+    if (next) {
+      requestAnimationFrame(() =>
+        aiRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+      );
+    }
+  };
 
   // State lives in IndexedDB, which hydrates asynchronously after mount — gate
   // the UI on it so the empty state never flashes and the auto-load below
@@ -73,8 +97,10 @@ export default function EditorPage() {
     <div className="container px-4 sm:px-6 lg:px-8 py-6">
       <ExportBar
         project={project}
-        onToggleMeta={() => setShowMeta(!showMeta)}
-        onToggleAI={() => setShowAI(!showAI)}
+        metaOpen={showMeta}
+        aiOpen={showAI}
+        onToggleMeta={toggleMeta}
+        onToggleAI={toggleAI}
       />
 
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[280px_1fr]">
@@ -104,12 +130,12 @@ export default function EditorPage() {
             </div>
           )}
           {showMeta && (
-            <div className="mt-6">
+            <div className="mt-6" ref={metaRef}>
               <MetadataForm />
             </div>
           )}
           {showAI && (
-            <div className="mt-6">
+            <div className="mt-6" ref={aiRef}>
               <AIPanel />
             </div>
           )}

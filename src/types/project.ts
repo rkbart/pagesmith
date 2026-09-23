@@ -12,13 +12,39 @@ export interface Chapter {
 
 export interface BookMetadata {
   title: string;
+  subtitle?: string;
   author: string;
   language: string;
+  /** Reading direction: spine page-progression-direction ("ltr" default). */
+  direction?: "ltr" | "rtl";
   description: string;
   isbn?: string;
   publisher?: string;
   date?: string;
   subject?: string;
+  /** Extra discovery keywords — emitted as additional dc:subject entries. */
+  keywords?: string;
+  /** Subject category code (e.g. BISAC) — emitted with an authority refine. */
+  category?: string;
+  /** Target audience / age rating — emitted as dc:audience. */
+  audience?: string;
+  /** Edition / volume ("2nd edition", "Vol. II") — dcterms:hasVersion. */
+  edition?: string;
+  /** Copyright / license notice — dc:rights. */
+  rights?: string;
+  /** Ebook producer — dc:contributor with marc role "bkp". */
+  producer?: string;
+  /** Fixed contributor roles — dc:contributor + marc role refines. */
+  translator?: string;
+  editor?: string;
+  illustrator?: string;
+  coverDesigner?: string;
+  /** Series name — belongs-to-collection (series). */
+  seriesName?: string;
+  /** Series position — group-position (only meaningful with seriesName). */
+  seriesPosition?: string;
+  /** Export filename override (no extension). App-level only, never emitted. */
+  exportFileName?: string;
 }
 
 export interface BookCover {
