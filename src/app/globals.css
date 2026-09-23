@@ -131,7 +131,10 @@
   }
 
   html {
-    scroll-behavior: smooth;
+    /* Only the reading progress bar uses smooth animation in the app — and it
+     transitions its own `width` via `transition-[width]`. Keep all document
+     scrolls instant so a chapter turn never pauses to ease into view. */
+    scroll-behavior: auto;
   }
 
   body {

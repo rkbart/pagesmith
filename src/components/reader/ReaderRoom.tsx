@@ -179,10 +179,22 @@ export function ReaderRoom({ project }: { project: Project }) {
     // Wait a frame so the incoming chapter is laid out before jumping.
     const frame = requestAnimationFrame(() => {
       const max = document.documentElement.scrollHeight - window.innerHeight;
+      // Disable smooth-scroll behavior while we restore the bookmark — we want
+      // the chapter to appear first, then jump. A pending smooth animation would
+      // start mid-flight and drag the page over several seconds.
+      const oldBehavior = document.documentElement.style.scrollBehavior;
+      document.documentElement.style.scrollBehavior = "auto";
       window.scrollTo({ top: Math.min(1, Math.max(0, ratio)) * Math.max(0, max) });
+      // Best-effort restore: if the global sheet re-applies smooth after us,
+      // we leave the inline value so the next manual scroll in this tab is
+      // unaffected. The reading progress bar is animated separately so it isn't
+      // impacted by document-level scroll behavior.
+      requestAnimationFrame(() => {
+        document.documentElement.style.scrollBehavior = oldBehavior || "";
+      });
     });
     return () => cancelAnimationFrame(frame);
-  }, [project.id, chapterId]);
+  }, [chapterId, project.id]);
 
   // ---- Keep the bookmark current while scrolling -------------------------
   useEffect(() => {
