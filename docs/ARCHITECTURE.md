@@ -75,7 +75,7 @@ Settings (src/app/settings/page.tsx)
 - `/` landing (Hero, ProcessPipeline, FormatStrip, FeatureBento, AIBand, FinalCta)
 - `/convert` import desk (single or multi-file → merged book)
 - `/convert/[format]` dynamic parse page (pdf, docx, markdown, html, txt, epub)
-- `/library` shelf of every book (cards/list toggle, search, pagination, open, read, delete)
+- `/library` shelf of every book (cards/list toggle, search, pagination, open, read, delete); `/library?collection=<id>` drills into one collection (unknown ids fall back to the overview)
 - `/editor` multi-chapter editor
 - `/read` reading room for the active (or most recent) book
 - `/check` EPUB validator

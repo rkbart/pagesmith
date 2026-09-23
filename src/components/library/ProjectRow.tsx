@@ -13,6 +13,7 @@ import type { Collection, Project } from "@/types/project";
 export function ProjectRow({
   project,
   collections,
+  collectionName,
   onAssign,
   onOpen,
   onRead,
@@ -20,6 +21,8 @@ export function ProjectRow({
 }: {
   project: Project;
   collections: Collection[];
+  /** Appended to the meta line (search results span folders). */
+  collectionName?: string | null;
   onAssign: (collectionId: string | null) => void;
   onOpen: (id: string) => void;
   onRead: (id: string) => void;
@@ -32,6 +35,7 @@ export function ProjectRow({
   const meta = [
     author || null,
     chapterLabel(project.chapters.length),
+    collectionName || null,
     `edited ${formatUpdated(project.updatedAt)}`,
   ]
     .filter(Boolean)

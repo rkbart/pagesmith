@@ -27,31 +27,3 @@ export function saveLibraryView(view: LibraryView): void {
     // Storage unavailable — the toggle still works for this visit.
   }
 }
-
-/**
- * Folder collapse state: the ids of collections currently collapsed.
- * Everything not listed reads as expanded.
- */
-const FOLDERS_KEY = "pagesmith-library-collapsed";
-
-export function loadCollapsedFolders(): string[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const stored = window.localStorage.getItem(FOLDERS_KEY);
-    const parsed: unknown = stored ? JSON.parse(stored) : [];
-    return Array.isArray(parsed)
-      ? parsed.filter((id): id is string => typeof id === "string")
-      : [];
-  } catch {
-    return [];
-  }
-}
-
-export function saveCollapsedFolders(ids: string[]): void {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(FOLDERS_KEY, JSON.stringify(ids));
-  } catch {
-    // Storage unavailable — collapse state still works for this visit.
-  }
-}

@@ -17,6 +17,7 @@
 - `CoverArt` — real cover, or a monogram placeholder (serif initial, brass rules) so the book title prints exactly once per shelf item (as the heading).
 - `ProjectCard` — card-shelf item: cover button (opens the studio), heading + author/updated line, collection picker, Read / Edit / Delete actions.
 - `ProjectRow` — dense list-shelf row: thumb, title/meta line, collection picker (`md+`), icon-only Read / Edit / Delete on mobile (labeled on `sm+`).
+- `CollectionCard` — folder on the overview grid: member cover mosaic, name, counts, freshness; click drills into `?collection=<id>`.
 - `CollectionSelect` — file-a-book picker (Unsorted + collections); resolves its own trigger label so a stale id never renders, truncates long names with `title` tooltips.
 - `ShelfPagination` — first/prev/numbered/next/last pager with windowed numbers + ellipsis; compact "Page X of Y" label on phones. `pageNumbers()` is exported for testing.
 - `DeleteProjectDialog` — shared destructive confirm (chapter count + cover note), used by both card and row.
@@ -48,7 +49,7 @@
 ## Utils (`src/lib/utils/`)
 - `handoff.ts` — stage a dropped file in sessionStorage so `/convert/[format]` can auto-parse it.
 - `reading-progress.ts` — per-book bookmarks (`chapterId` + scroll ratio) and reader typography prefs, both localStorage.
-- `library-prefs.ts` — library cards/list layout choice, folder collapse state, localStorage.
+- `library-prefs.ts` — library cards/list layout choice, localStorage.
 - `library-search.ts` — pure helpers: `matchesQuery` (title/author/collection/chapter-title/chapter-text, HTML stripped), `paginate` (1-based slice + clamped page), `plainText`.
 - `naming.ts` — pure helpers: `uniqueName` (`Title (1)`, `(2)`, … dedupe), `stripNumberSuffix`.
 - `text.ts` — `generateId`, `slugify`, `truncate`, `stripHtml`, `escapeHtml`, `formatFileSize`, `formatUpdated`, `chapterLabel`, `delay`.

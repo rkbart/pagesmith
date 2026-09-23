@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { BookOpen, Pencil, Trash2 } from "lucide-react";
+import { BookOpen, Folder, Pencil, Trash2 } from "lucide-react";
 import { CoverArt } from "./CoverArt";
 import { CollectionSelect } from "./CollectionSelect";
 import { DeleteProjectDialog } from "./DeleteProjectDialog";
@@ -12,6 +12,7 @@ import type { Collection, Project } from "@/types/project";
 export function ProjectCard({
   project,
   collections,
+  collectionName,
   onAssign,
   onOpen,
   onRead,
@@ -19,6 +20,8 @@ export function ProjectCard({
 }: {
   project: Project;
   collections: Collection[];
+  /** Shown as a folder badge (search results span folders). */
+  collectionName?: string | null;
   onAssign: (collectionId: string | null) => void;
   onOpen: (id: string) => void;
   onRead: (id: string) => void;
@@ -53,6 +56,12 @@ export function ProjectCard({
             <p className="mt-0.5 truncate text-xs text-muted-foreground">
               {author ? `${author} · ` : ""}edited {formatUpdated(project.updatedAt)}
             </p>
+            {collectionName && (
+              <p className="mt-1 flex items-center gap-1 truncate text-xs text-muted-foreground">
+                <Folder className="size-3 shrink-0" aria-hidden="true" />
+                <span className="truncate">{collectionName}</span>
+              </p>
+            )}
           </div>
           <Button
             size="icon-sm"

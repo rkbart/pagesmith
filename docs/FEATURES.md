@@ -38,12 +38,12 @@ Failed files are skipped and reported per row.
 - "Import EPUB" button (header + empty state) parses an `.epub` straight onto
   the shelf and opens it in the reading room; other formats go through the
   import desk at `/convert`
-- Collections: expandable folders for grouping similar titles — folder
-  headers with book counts and chevron toggle (collapse state persists),
-  hover-revealed pencil (inline rename) and bin (two-step delete, books are
-  kept and become unsorted), inline create, per-book assignment picker on
-  cards and rows; the unsorted shelf keeps its pagination while folders list
-  all members; persisted with the shelf
+- Collections: overview grid of folder cards (cover mosaic, counts,
+  freshness) with drill-in views at `/library?collection=<id>` (breadcrumb,
+  inline rename, two-step delete — books are kept and become unsorted);
+  per-book assignment picker on cards and rows; the unsorted shelf keeps its
+  pagination; search stays global with folder badges on hits; persisted with
+  the shelf
 - Duplicate guardrails: importing a title that's already shelved shelves
   `Title (1)`, `Title (2)`, … instead (case-insensitive, existing suffixes
   collapse); same rule for collection names (`uniqueName` in

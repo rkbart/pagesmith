@@ -1,16 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   BookOpen,
   BookUp,
-  ChevronDown,
   ChevronRight,
   Feather,
-  Folder,
-  FolderOpen,
   FolderPlus,
   LayoutGrid,
   List,
@@ -22,6 +19,7 @@ import {
   Upload,
   X,
 } from "lucide-react";
+import { CollectionCard } from "@/components/library/CollectionCard";
 import { ProjectCard } from "@/components/library/ProjectCard";
 import { ProjectRow } from "@/components/library/ProjectRow";
 import { ShelfPagination } from "@/components/library/ShelfPagination";
@@ -31,9 +29,7 @@ import { useProjectHydrated } from "@/hooks/useHydrated";
 import { detectFormat, parseFile } from "@/lib/parsers";
 import { useProjectStore } from "@/lib/store/project";
 import {
-  loadCollapsedFolders,
   loadLibraryView,
-  saveCollapsedFolders,
   saveLibraryView,
   type LibraryView,
 } from "@/lib/utils/library-prefs";
@@ -43,7 +39,23 @@ import { clearPosition } from "@/lib/utils/reading-progress";
 /** Page sizes per layout — list rows are short, cards are tall. */
 const PER_PAGE: Record<LibraryView, number> = { cards: 12, list: 10 };
 
+/** `useSearchParams` needs a Suspense boundary for static prerendering. */
 export default function LibraryPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="container flex items-center justify-center gap-2 py-32 text-muted-foreground">
+          <Loader2 className="size-5 animate-spin text-brass" aria-hidden="true" />
+          Fetching your shelf…
+        </div>
+      }
+    >
+      <LibraryPageInner />
+    </Suspense>
+  );
+}
+
+function LibraryPageInner() {
   const router = useRouter();
   const hydrated = useProjectHydrated();
   const {
@@ -63,16 +75,26 @@ export default function LibraryPage() {
   const [view, setView] = useState<LibraryView>(() => loadLibraryView());
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
-  // Ids of collapsed folders — everything else renders expanded.
-  const [collapsedIds, setCollapsedIds] = useState<string[]>(() => loadCollapsedFolders());
   const [showNewCollection, setShowNewCollection] = useState(false);
   const [newCollectionName, setNewCollectionName] = useState("");
   // Two-step delete confirm for collections (no dialog needed).
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
-  useEffect(() => {
-    saveCollapsedFolders(collapsedIds);
-  }, [collapsedIds]);
+  // Drill-in view: `?collection=<id>` opens that folder's books. Unknown ids
+  // fall back to the overview — stale bookmarks never 404.
+  const searchParams = useSearchParams();
+  const activeCollection =
+    collections.find((c) => c.id === searchParams.get("collection")) ?? null;
+
+  const openCollection = (id: string) => {
+    setPage(1);
+    router.push(`/library?collection=${encodeURIComponent(id)}`);
+  };
+
+  const openOverview = () => {
+    setPage(1);
+    router.push("/library");
+  };
 
   useEffect(() => {
     saveLibraryView(view);
@@ -146,20 +168,14 @@ export default function LibraryPage() {
     setPage(1);
   };
 
-  const toggleFolder = (id: string) => {
-    setCollapsedIds((prev) =>
-      prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]
-    );
-  };
-
   const handleCreateCollection = () => {
     const name = newCollectionName.trim();
     if (!name) return;
     const id = createCollection(name);
     setNewCollectionName("");
     setShowNewCollection(false);
-    // A new folder opens expanded so the books filed into it are visible.
-    setCollapsedIds((prev) => prev.filter((c) => c !== id));
+    // Land inside the new folder so books can be filed straight away.
+    openCollection(id);
   };
 
   const handleDeleteCollection = (id: string) => {
@@ -174,7 +190,7 @@ export default function LibraryPage() {
     setConfirmDeleteId(null);
     setEditingId((editing) => (editing === id ? null : editing));
     deleteCollection(id);
-    setCollapsedIds((prev) => prev.filter((c) => c !== id));
+    if (activeCollection?.id === id) openOverview();
   };
 
   // Inline folder rename (pencil in the folder header).
@@ -215,7 +231,8 @@ export default function LibraryPage() {
 
   // One renderer for every book list on this page — search results, folder
   // members, and the unsorted shelf all share cards/rows + assignment.
-  const bookList = (books: typeof shelf) =>
+  // `badges` prints each book's folder (search results span folders).
+  const bookList = (books: typeof shelf, badges = false) =>
     view === "cards" ? (
       <div
         className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4"
@@ -226,6 +243,11 @@ export default function LibraryPage() {
             key={project.id}
             project={project}
             collections={collections}
+            collectionName={
+              badges
+                ? (collectionNameById.get(project.collectionId ?? "") ?? null)
+                : null
+            }
             onAssign={(collectionId) => assignProject(project.id, collectionId)}
             onOpen={openBook}
             onRead={readBook}
@@ -240,6 +262,11 @@ export default function LibraryPage() {
             key={project.id}
             project={project}
             collections={collections}
+            collectionName={
+              badges
+                ? (collectionNameById.get(project.collectionId ?? "") ?? null)
+                : null
+            }
             onAssign={(collectionId) => assignProject(project.id, collectionId)}
             onOpen={openBook}
             onRead={readBook}
@@ -531,7 +558,7 @@ export default function LibraryPage() {
               “{query.trim()}”
               {searchTotalPages > 1 ? ` · page ${currentPage} of ${searchTotalPages}` : ""}
             </p>
-            {bookList(searchVisible)}
+            {bookList(searchVisible, true)}
             <ShelfPagination
               page={currentPage}
               totalPages={searchTotalPages}
@@ -539,25 +566,28 @@ export default function LibraryPage() {
             />
           </>
         )
-      ) : (
+      ) : activeCollection ? (
+        // ---- Drill-in: one folder's books --------------------------------
         <>
-          {collections.map((c) => {
+          <nav aria-label="Breadcrumb" className="mb-4">
+            <button
+              type="button"
+              onClick={openOverview}
+              className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <ChevronRight className="size-4 rotate-180" aria-hidden="true" />
+              Library
+            </button>
+          </nav>
+          {(() => {
+            const c = activeCollection;
             const members = shelf.filter((p) => p.collectionId === c.id);
-            const collapsed = collapsedIds.includes(c.id);
+            const editing = editingId === c.id;
             return (
-              <section
-                key={c.id}
-                className="mb-6 overflow-hidden rounded-2xl border bg-card shadow-panel"
-                aria-label={`Collection ${c.name}`}
-              >
-                <div
-                  className={`group flex items-center gap-1 px-2 py-1.5 ${
-                    collapsed ? "" : "border-b bg-muted/50"
-                  }`}
-                >
-                  {editingId === c.id ? (
+              <section aria-label={`Collection ${c.name}`}>
+                <div className="mb-4 flex items-center gap-1 rounded-xl border bg-card px-2 py-1.5 shadow-panel">
+                  {editing ? (
                     <span className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5">
-                      <FolderOpen className="size-4 shrink-0 text-brass" aria-hidden="true" />
                       <Input
                         autoFocus
                         value={editName}
@@ -575,38 +605,23 @@ export default function LibraryPage() {
                       />
                     </span>
                   ) : (
-                    <button
-                      type="button"
-                      onClick={() => toggleFolder(c.id)}
-                      aria-expanded={!collapsed}
-                      className="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-muted/50"
-                    >
-                      {collapsed ? (
-                        <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                      ) : (
-                        <ChevronDown className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                      )}
-                      {collapsed ? (
-                        <Folder className="size-4 shrink-0 text-brass" aria-hidden="true" />
-                      ) : (
-                        <FolderOpen className="size-4 shrink-0 text-brass" aria-hidden="true" />
-                      )}
-                      <span className="font-heading min-w-0 flex-1 truncate text-base">
+                    <span className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5">
+                      <span className="font-heading min-w-0 flex-1 truncate text-lg" title={c.name}>
                         {c.name}
                       </span>
                       <span className="shrink-0 text-xs text-muted-foreground">
                         {members.length} book{members.length === 1 ? "" : "s"}
                       </span>
-                    </button>
+                    </span>
                   )}
-                  {editingId === c.id ? null : (
+                  {editing ? null : (
                     <>
                       <button
                         type="button"
                         onClick={() => startRename(c.id, c.name)}
                         aria-label={`Rename collection ${c.name}`}
                         title="Rename collection"
-                        className="shrink-0 rounded-md p-1.5 text-muted-foreground transition-all hover:text-foreground md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"
+                        className="shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:text-foreground"
                       >
                         <Pencil className="size-4" aria-hidden="true" />
                       </button>
@@ -619,10 +634,10 @@ export default function LibraryPage() {
                             : `Delete collection ${c.name} (books are kept)`
                         }
                         title="Delete collection — its books are kept"
-                        className={`mr-1 shrink-0 rounded-md p-1.5 text-xs transition-all ${
+                        className={`mr-1 shrink-0 rounded-md p-1.5 text-xs transition-colors ${
                           confirmDeleteId === c.id
                             ? "bg-destructive font-medium text-destructive-foreground"
-                            : "text-muted-foreground hover:text-destructive md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"
+                            : "text-muted-foreground hover:text-destructive"
                         }`}
                       >
                         {confirmDeleteId === c.id ? (
@@ -634,21 +649,36 @@ export default function LibraryPage() {
                     </>
                   )}
                 </div>
-                {collapsed ? null : (
-                  <div className="bg-muted/30 p-3 sm:p-4">
-                    {members.length === 0 ? (
-                      <p className="rounded-xl border border-dashed bg-card px-4 py-6 text-center text-sm text-muted-foreground">
-                        Empty folder — file books here with the collection
-                        picker on any book.
-                      </p>
-                    ) : (
-                      bookList(members)
-                    )}
-                  </div>
+                {members.length === 0 ? (
+                  <p className="rounded-xl border border-dashed bg-card px-4 py-10 text-center text-sm text-muted-foreground">
+                    Empty folder — file books here with the collection picker
+                    on any book.
+                  </p>
+                ) : (
+                  bookList(members)
                 )}
               </section>
             );
-          })}
+          })()}
+        </>
+      ) : (
+        // ---- Overview: folder cards + unsorted shelf ----------------------
+        <>
+          {collections.length > 0 && (
+            <div
+              className="mb-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+              aria-label="Collections"
+            >
+              {collections.map((c) => (
+                <CollectionCard
+                  key={c.id}
+                  collection={c}
+                  books={shelf.filter((p) => p.collectionId === c.id)}
+                  onOpen={openCollection}
+                />
+              ))}
+            </div>
+          )}
 
           {collections.length > 0 && (
             <p className="eyebrow mb-3">
