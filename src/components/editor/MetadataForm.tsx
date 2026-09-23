@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { useProjectStore } from "@/lib/store/project";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,6 +13,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { Book } from "lucide-react";
 import { plainText } from "@/lib/utils/library-search";
 import type { BookMetadata } from "@/types/project";
 
@@ -86,80 +88,80 @@ export function MetadataForm() {
       value={value ?? ""}
       onChange={(e) => set({ [key]: e.target.value })}
       placeholder={placeholder}
+      className="overflow-x-auto"
     />
   );
 
   return (
-    <div className="space-y-6 rounded-2xl border bg-card p-6 shadow-panel">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="font-heading text-lg">Book metadata</h3>
+    <Card className="p-6">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <span className="grid size-7 place-items-center rounded-lg bg-brass/10">
+            <Book className="size-4 text-brass" aria-hidden="true" />
+          </span>
+          <h3 className="font-heading text-lg">Book metadata</h3>
+        </div>
         <p className="code text-muted-foreground" aria-live="polite">
           {stats.words.toLocaleString()} words · ~{stats.minutes} min read
         </p>
       </div>
 
-      {/* ---- Core: always visible ---- */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Field id="title" label="Title *">
-          {text("title", meta.title, "Book title")}
-        </Field>
-        <Field id="subtitle" label="Subtitle">
-          {text("subtitle", meta.subtitle, "Explanatory secondary title")}
-        </Field>
-        <Field id="author" label="Author *">
-          {text("author", meta.author, "Author name")}
-        </Field>
-        <Field id="language" label="Language *">
-          <Select
-            value={meta.language || "en"}
-            onValueChange={(v) => v && set({ language: v })}
-          >
-            <SelectTrigger id="language">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {LANGUAGES.map((lang) => (
-                <SelectItem key={lang.code} value={lang.code}>
-                  {lang.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </Field>
-        <Field
-          id="direction"
-          label="Reading direction"
-          hint="Right-to-left sets page-progression-direction in the EPUB."
-        >
-          <Select
-            value={meta.direction ?? "ltr"}
-            onValueChange={(v) => v && set({ direction: v as "ltr" | "rtl" })}
-          >
-            <SelectTrigger id="direction">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ltr">Left to right</SelectItem>
-              <SelectItem value="rtl">Right to left</SelectItem>
-            </SelectContent>
-          </Select>
-        </Field>
-        <Field id="exportFileName" label="Export file name" hint="Blank uses the title.">
-          {text("exportFileName", meta.exportFileName, "my-book")}
-        </Field>
-      </div>
-      <Field id="description" label="Description">
-        <Textarea
-          id="description"
-          value={meta.description}
-          onChange={(e) => set({ description: e.target.value })}
-          placeholder="Book description for stores and readers"
-          rows={3}
-        />
-      </Field>
-
-      {/* ---- Extended sections, collapsed by default ---- */}
-      <Accordion>
+{/* ---- Core: always visible ---- */}
+      <Accordion multiple={false} defaultValue={["core"]}>
+        <AccordionItem value="core">
+          <AccordionTrigger>Core</AccordionTrigger>
+          <AccordionContent>
+            <div className="grid grid-cols-1 gap-4">
+              <Field id="title" label="Title *">
+                {text("title", meta.title, "Book title")}
+              </Field>
+              <Field id="subtitle" label="Subtitle">
+                {text("subtitle", meta.subtitle, "Explanatory secondary title")}
+              </Field>
+              <Field id="author" label="Author *">
+                {text("author", meta.author, "Author name")}
+              </Field>
+              <Field id="language" label="Language *">
+                <Select
+                  value={meta.language || "en"}
+                  onValueChange={(v) => v && set({ language: v })}
+                >
+                  <SelectTrigger id="language">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {LANGUAGES.map((lang) => (
+                      <SelectItem key={lang.code} value={lang.code}>
+                        {lang.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field
+                id="direction"
+                label="Reading direction"
+                hint="Right-to-left sets page-progression-direction in the EPUB."
+              >
+                <Select
+                  value={meta.direction ?? "ltr"}
+                  onValueChange={(v) => v && set({ direction: v as "ltr" | "rtl" })}
+                >
+                  <SelectTrigger id="direction">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ltr">Left to right</SelectItem>
+                    <SelectItem value="rtl">Right to left</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field id="exportFileName" label="Export file name" hint="Blank uses the title.">
+                {text("exportFileName", meta.exportFileName, "my-book")}
+              </Field>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
         <AccordionItem value="contributors">
           <AccordionTrigger>Contributors</AccordionTrigger>
           <AccordionContent>
@@ -167,7 +169,7 @@ export function MetadataForm() {
               Distinct EPUB roles — translators and illustrators no longer
               belong in the Author field.
             </p>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4">
               <Field id="translator" label="Translator">
                 {text("translator", meta.translator, "Translated by …")}
               </Field>
@@ -187,7 +189,7 @@ export function MetadataForm() {
         <AccordionItem value="publishing">
           <AccordionTrigger>Publishing</AccordionTrigger>
           <AccordionContent>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4">
               <Field id="publisher" label="Publisher">
                 {text("publisher", meta.publisher, "Publisher name")}
               </Field>
@@ -213,7 +215,7 @@ export function MetadataForm() {
         <AccordionItem value="discovery">
           <AccordionTrigger>Discovery</AccordionTrigger>
           <AccordionContent>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4">
               <Field id="subject" label="Subject">
                 {text("subject", meta.subject, "Fiction")}
               </Field>
@@ -245,7 +247,7 @@ export function MetadataForm() {
         <AccordionItem value="series">
           <AccordionTrigger>Series</AccordionTrigger>
           <AccordionContent>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4">
               <Field id="seriesName" label="Series name">
                 {text("seriesName", meta.seriesName, "The Bound Trilogy")}
               </Field>
@@ -266,6 +268,6 @@ export function MetadataForm() {
           </AccordionContent>
         </AccordionItem>
       </Accordion>
-    </div>
+    </Card>
   );
 }

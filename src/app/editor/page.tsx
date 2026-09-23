@@ -7,15 +7,17 @@ import { useProjectHydrated } from "@/hooks/useHydrated";
 import { ChapterList } from "@/components/editor/ChapterList";
 import { ChapterEditor } from "@/components/editor/ChapterEditor";
 import { CoverUpload } from "@/components/editor/CoverUpload";
+import { MetadataForm } from "@/components/editor/MetadataForm";
 import { ExportBar } from "@/components/editor/ExportBar";
 import { BackToTop } from "@/components/shared/BackToTop";
 import { AIPanel } from "@/components/ai/AIPanel";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Plus,
   Library,
   Feather,
   Loader2,
+  Settings2,
   Sparkles,
   X,
 } from "lucide-react";
@@ -26,7 +28,6 @@ export default function EditorPage() {
     projects,
     activeChapterId,
     loadProject,
-    addChapter,
   } = useProjectStore();
   // Chapters live in a slide hide/reveal panel on the left (drawer on
   // mobile, collapsing sidebar on desktop).
@@ -54,15 +55,20 @@ export default function EditorPage() {
   // AI Tools live in a right slide-over so the chapter stays visible
   // while they run — no backdrop on desktop, dimmed backdrop on mobile.
   const [aiOpen, setAiOpen] = useState(false);
+  // Metadata docks the same way.
+  const [metaOpen, setMetaOpen] = useState(false);
 
   useEffect(() => {
-    if (!aiOpen) return;
+    if (!aiOpen && !metaOpen) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setAiOpen(false);
+      if (e.key === "Escape") {
+        setAiOpen(false);
+        setMetaOpen(false);
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [aiOpen]);
+  }, [aiOpen, metaOpen]);
 
   // State lives in IndexedDB, which hydrates asynchronously after mount — gate
   // the UI on it so the empty state never flashes and the auto-load below
@@ -114,7 +120,9 @@ export default function EditorPage() {
       <ExportBar
         project={project}
         aiOpen={aiOpen}
-        onToggleAI={() => setAiOpen((v) => !v)}
+        onToggleAI={() => { setMetaOpen(false); setAiOpen((v) => !v); }}
+        metaOpen={metaOpen}
+        onToggleMeta={() => { setAiOpen(false); setMetaOpen((v) => !v); }}
         chaptersOpen={sideOpen}
         onToggleChapters={() => setSideOpen((v) => !v)}
         chaptersCount={project.chapters.length}
@@ -129,9 +137,6 @@ export default function EditorPage() {
               <span className="eyebrow min-w-0 flex-1 truncate px-1">
                 Chapters ({project.chapters.length})
               </span>
-              <Button size="sm" onClick={() => addChapter()} aria-label="Add chapter">
-                <Plus className="h-4 w-4" />
-              </Button>
             </div>
             <ChapterList />
           </div>
@@ -155,9 +160,6 @@ export default function EditorPage() {
               <span className="eyebrow min-w-0 flex-1 truncate px-1">
                 Chapters ({project.chapters.length})
               </span>
-              <Button size="sm" onClick={() => addChapter()} aria-label="Add chapter">
-                <Plus className="h-4 w-4" />
-              </Button>
               <button
                 type="button"
                 onClick={() => setSideOpen(false)}
@@ -181,9 +183,6 @@ export default function EditorPage() {
           ) : (
             <div className="rounded-2xl border border-dashed border-brass/30 bg-paper p-12 text-center text-muted-foreground">
               <p className="mb-4 font-heading text-lg">No chapter on the bench</p>
-              <Button variant="outline" onClick={() => addChapter()}>
-                <Plus className="mr-2 h-4 w-4" /> Add first chapter
-              </Button>
             </div>
           )}
           </div>
@@ -221,10 +220,38 @@ export default function EditorPage() {
             </div>
           </div>
         </aside>
+
+        {/* Desktop metadata dock, same pattern. */}
+        <aside
+          className={`hidden shrink-0 overflow-hidden transition-all duration-200 lg:block ${
+            metaOpen ? "w-[400px] opacity-100" : "w-0 opacity-0"
+          }`}
+          aria-hidden={!metaOpen}
+        >
+          <div className="w-[400px] overflow-hidden rounded-xl border bg-card shadow-panel">
+            <div className="flex items-center gap-2 border-b px-4 py-3">
+              <Settings2 className="size-4 shrink-0 text-brass" aria-hidden="true" />
+              <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                Metadata
+              </span>
+              <button
+                type="button"
+                onClick={() => setMetaOpen(false)}
+                aria-label="Close metadata"
+                className="shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <X className="size-5" aria-hidden="true" />
+              </button>
+            </div>
+            <div className="max-h-[calc(100vh-12rem)] overflow-y-auto p-4">
+              <MetadataForm />
+            </div>
+          </div>
+        </aside>
       </div>
       {/* AI Tools overlay (mobile only). */}
       <div
-        className={`fixed inset-0 z-50 ${aiOpen ? "" : "pointer-events-none"}`}
+        className={`fixed inset-0 z-50 lg:hidden ${aiOpen ? "" : "pointer-events-none"}`}
         aria-hidden={!aiOpen}
       >
         <div
@@ -255,6 +282,39 @@ export default function EditorPage() {
           </div>
           <div className="flex-1 overflow-y-auto p-4">
             <AIPanel />
+          </div>
+        </aside>
+      </div>
+      {/* Metadata overlay (mobile only). */}
+      <div
+        className={`fixed inset-0 z-50 lg:hidden ${metaOpen ? "" : "pointer-events-none"}`}
+        aria-hidden={!metaOpen}
+      >
+        <div
+          onClick={() => setMetaOpen(false)}
+          className={`absolute inset-0 bg-black/40 transition-opacity duration-200 ${metaOpen ? "opacity-100" : "opacity-0"}`}
+        />
+        <aside
+          className={`absolute inset-y-0 right-0 flex w-full max-w-md flex-col border-l bg-background shadow-panel transition-transform duration-200 ${metaOpen ? "translate-x-0" : "translate-x-full"}`}
+          role="dialog"
+          aria-label="Metadata"
+        >
+          <div className="flex items-center gap-2 border-b px-4 py-3">
+            <Settings2 className="size-4 shrink-0 text-brass" aria-hidden="true" />
+            <span className="min-w-0 flex-1 truncate text-sm font-medium">
+              Metadata
+            </span>
+            <button
+              type="button"
+              onClick={() => setMetaOpen(false)}
+              aria-label="Close metadata"
+              className="shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <X className="size-5" aria-hidden="true" />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-4">
+            <MetadataForm />
           </div>
         </aside>
       </div>

@@ -19,6 +19,8 @@ export function ExportBar({
   project,
   aiOpen = false,
   onToggleAI,
+  metaOpen = false,
+  onToggleMeta,
   chaptersOpen = false,
   onToggleChapters,
   chaptersCount = 0,
@@ -26,6 +28,8 @@ export function ExportBar({
   project: { name: string; metadata: { title: string } };
   aiOpen?: boolean;
   onToggleAI: () => void;
+  metaOpen?: boolean;
+  onToggleMeta: () => void;
   chaptersOpen?: boolean;
   onToggleChapters?: () => void;
   chaptersCount?: number;
@@ -76,12 +80,15 @@ export function ExportBar({
               <List className="h-4 w-4 mr-1" /> Chapters ({chaptersCount})
             </Button>
           )}
-          <Link
-            href="/editor/metadata"
-            className={buttonVariants({ variant: "outline", size: "sm" })}
+          <Button
+            variant={metaOpen ? "secondary" : "ghost"}
+            size="sm"
+            onClick={onToggleMeta}
+            aria-expanded={metaOpen}
+            className={metaOpen ? undefined : "bg-background"}
           >
             <Settings2 className="h-4 w-4 mr-1" /> Metadata
-          </Link>
+          </Button>
           <Button
             variant={aiOpen ? "secondary" : "ghost"}
             size="sm"
