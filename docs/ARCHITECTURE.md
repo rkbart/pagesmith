@@ -50,19 +50,25 @@ Settings (src/app/settings/page.tsx)
 
 ## State
 
-- Single Zustand store (`useProjectStore`) with `persist` middleware → IndexedDB
-  (`pagesmith-db` via `src/lib/store/idb-storage.ts`; first run adopts legacy
-  `localStorage["pagesmith-projects"]`). The editor gates on
-  `persist.hasHydrated()` because IDB hydrates asynchronously.
-- `partialize` persists `projects`, `project`, `activeChapterId` only.
+- Single Zustand store (`useProjectStore`) with **manual debounced persistence**
+  → IndexedDB (`pagesmith-db` via `src/lib/store/idb-storage.ts`; first run
+  adopts legacy `localStorage["pagesmith-projects"]`). Saves are debounced
+  (1s trailing edge) and flushed on page hide: the previous `persist`
+  middleware serialized the whole shelf on every keystroke and chapter turn,
+  blocking the main thread for hundreds of ms (see `docs/TECH-DECISIONS.md`).
+  Saves are skipped until hydration completes, so the shelf can never be
+  overwritten with empty state.
+- Only `projects` + `activeChapterId` are persisted. The open `project` draft
+  is deliberately excluded (it may be unshelved, and persisting it would
+  resurrect ghost books on reload).
 - AI settings stored separately under `pagesmith-ai-settings` (localStorage —
   tiny, read synchronously). Theme likewise. Reading bookmarks and reader
   typography live in localStorage too (`pagesmith-reading-progress`,
   `pagesmith-reader-prefs`), as does the library's cards/list layout choice
   (`pagesmith-library-view`).
 - Async hydration is gated in the UI via `useProjectHydrated()`
-  (`src/hooks/useHydrated.ts`) — `/editor`, `/library`, `/read` render a
-  loading state until `persist.hasHydrated()` is true.
+  (`src/hooks/useHydrated.ts`, reads the store's `hydrated` flag) — `/editor`
+  and `/library` render a loading state until the shelf is restored.
 
 ## Routing
 
@@ -80,3 +86,19 @@ Settings (src/app/settings/page.tsx)
 - shadcn/ui uses **Base UI** (`@base-ui/react`), not Radix. `Button` has no `asChild` — use `buttonVariants()` on `Link`/`a`, or Base UI `render` prop.
 - `Select.onValueChange` receives `string | null` — null-check handlers.
 - Heavy libs (`pdfjs-dist`, `mammoth`, `marked`, `jszip`) are dynamically imported to keep initial bundles small.
+
+## Performance
+
+- EPUB import (`src/lib/parsers/epub.ts`): one image cache per import, so
+  covers/logos/ornaments reused across spine files are decoded and
+  base64-encoded once; every imported `<img>` is stamped `loading="lazy"` +
+  `decoding="async"`; chapters split at `h1`/`h2` boundaries.
+- The reader renders one chapter at a time and the sticky reading bar uses a
+  solid background — no `backdrop-blur`, which forced full-page repaints on
+  every scroll frame.
+- Opt-in instrumentation (`src/lib/utils/perf.ts`): set
+  `localStorage["pagesmith-perf"] = "1"` to log `[pagesmith-perf]` timings —
+  import phases, per-chapter HTML/image sizes, IDB read/write + `JSON.parse`
+  estimates. Zero overhead when disabled.
+- Lazy images and the deduped cache apply to newly imported books only —
+  re-import older books to pick them up.

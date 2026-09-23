@@ -264,7 +264,9 @@ export function ReaderRoom({ project }: { project: Project }) {
   return (
     <div>
       {/* ---- Reading bar: position, type controls, way back ---- */}
-      <div className="sticky top-16 z-30 border-b bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/75">
+      {/* Solid background (no backdrop-blur): blurring a giant scrolling
+          chapter behind a sticky bar forces expensive repaints per frame. */}
+      <div className="sticky top-16 z-30 border-b bg-background">
         <div className="container flex h-14 items-center gap-2 px-4 sm:px-6 lg:px-8">
           <Button
             variant="ghost"

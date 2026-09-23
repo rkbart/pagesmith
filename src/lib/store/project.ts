@@ -1,6 +1,11 @@
 import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
 import { idbStorage } from "./idb-storage";
+import {
+  formatBytes,
+  perfEnabled,
+  perfLog,
+  perfMeasure,
+} from "@/lib/utils/perf";
 import type { Project, Chapter, BookMetadata, BookCover, TOCEntry } from "@/types/project";
 
 function generateId(): string {
@@ -20,6 +25,8 @@ interface ProjectState {
   projects: Project[];
   activeChapterId: string | null;
   isDirty: boolean;
+  /** True once the shelf has been restored from IndexedDB (see below). */
+  hydrated: boolean;
 
   createProject: (name: string) => void;
   /** Drop an unsaved draft from memory (a book already on the shelf is kept). */
@@ -41,12 +48,12 @@ interface ProjectState {
 }
 
 export const useProjectStore = create<ProjectState>()(
-  persist(
-    (set, get) => ({
+  (set, get) => ({
       project: null,
       projects: [],
       activeChapterId: null,
       isDirty: false,
+      hydrated: false,
 
       createProject: (name) => {
         const now = Date.now();
@@ -278,19 +285,111 @@ export const useProjectStore = create<ProjectState>()(
       save: () => {
         set({ isDirty: false });
       },
-    }),
-    {
-      name: "pagesmith-projects",
-      storage: createJSONStorage(() => idbStorage),
-      partialize: (state) => ({
-        // Only shelved books are persisted. The open `project` is deliberately
-        // excluded: it may be an empty draft (never shelved), and persisting it
-        // would resurrect ghost books on reload. Shelved books re-sync via
-        // `shelveProject` on every edit, and the editor/read pages re-open the
-        // most recent shelved book when `project` is null.
-        projects: state.projects,
-        activeChapterId: state.activeChapterId,
-      }),
-    }
-  )
+    })
 );
+
+/* ------------------------------------------------------------------ */
+/* Manual persistence (replaces zustand's `persist` middleware).          */
+/*                                                                       */
+/* Why manual: persist serializes + writes on EVERY store change. With a  */
+/* whole book (or shelf) of base64 images in state, each editor keystroke */
+/* and every reader chapter turn blocked the main thread on a multi-MB    */
+/* JSON.stringify. Saves are now debounced (trailing edge) and flushed   */
+/* when the page hides, so interaction bursts collapse into one write.    */
+/*                                                                       */
+/* Only shelved books are persisted. The open `project` is deliberately   */
+/* excluded: it may be an empty draft (never shelved), and persisting it  */
+/* would resurrect ghost books on reload. Shelved books re-sync via       */
+/* `shelveProject` on every edit, and the editor/read pages re-open the   */
+/* most recent shelved book when `project` is null.                       */
+/* ------------------------------------------------------------------ */
+
+const PERSIST_KEY = "pagesmith-projects";
+const PERSIST_VERSION = 0;
+const SAVE_DEBOUNCE_MS = 1000;
+
+function snapshot(state: ProjectState): {
+  projects: Project[];
+  activeChapterId: string | null;
+} {
+  return {
+    projects: state.projects,
+    activeChapterId: state.activeChapterId,
+  };
+}
+
+function saveNow(): void {
+  const state = useProjectStore.getState();
+  // Never save before hydration finished — that would overwrite the shelf
+  // with empty state.
+  if (!state.hydrated) return;
+  const t0 = performance.now();
+  const payload = JSON.stringify({
+    state: snapshot(state),
+    version: PERSIST_VERSION,
+  });
+  if (perfEnabled()) {
+    perfMeasure("store serialize", t0);
+    perfLog("store serialize payload", { bytes: formatBytes(payload.length) });
+  }
+  void idbStorage.setItem(PERSIST_KEY, payload);
+}
+
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
+
+function scheduleSave(): void {
+  if (typeof window === "undefined") return;
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    saveTimer = null;
+    saveNow();
+  }, SAVE_DEBOUNCE_MS);
+}
+
+function flushSave(): void {
+  if (saveTimer) {
+    clearTimeout(saveTimer);
+    saveTimer = null;
+  }
+  saveNow();
+}
+
+async function hydrateFromStorage(): Promise<void> {
+  try {
+    const raw = await idbStorage.getItem(PERSIST_KEY);
+    if (raw) {
+      type PersistedShape = {
+        projects?: Project[];
+        activeChapterId?: string | null;
+      };
+      const parsed = JSON.parse(raw) as { state?: PersistedShape } & PersistedShape;
+      // Accept the persist-middleware envelope (`{state, version}`); fall
+      // back to a bare snapshot shape for forward tolerance.
+      const saved: PersistedShape = parsed.state ?? parsed;
+      useProjectStore.setState({
+        projects: Array.isArray(saved?.projects) ? saved.projects : [],
+        activeChapterId: saved?.activeChapterId ?? null,
+      });
+    }
+  } catch (err) {
+    console.warn("[pagesmith] Failed to restore projects:", err);
+  } finally {
+    useProjectStore.setState({ hydrated: true });
+  }
+}
+
+if (typeof window !== "undefined") {
+  void hydrateFromStorage();
+
+  // Every store write schedules a debounced save (guarded on `hydrated`
+  // inside saveNow/flushSave so pre-hydration sets can't wipe the shelf).
+  useProjectStore.subscribe(() => {
+    if (useProjectStore.getState().hydrated) scheduleSave();
+  });
+
+  // Don't lose the trailing debounced write on tab close.
+  window.addEventListener("pagehide", flushSave);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") flushSave();
+  });
+}

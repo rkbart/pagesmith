@@ -1,5 +1,11 @@
 import type { ParseResult, BookMetadata, BookCover } from "@/types/project";
 import { generateId } from "@/lib/utils/text";
+import {
+  formatBytes,
+  perfEnabled,
+  perfLog,
+  perfMeasure,
+} from "@/lib/utils/perf";
 import type JSZip from "jszip";
 
 /**
@@ -51,11 +57,21 @@ function dirOf(path: string): string {
 
 
 export async function parseEPUB(file: File): Promise<ParseResult> {
+  const t0 = performance.now();
   const warnings: string[] = [];
   const JSZip = (await import("jszip")).default;
 
+  // One cache per import: covers, logos, and ornaments are routinely reused
+  // across spine files — without this each reuse is re-decoded, re-encoded
+  // to base64, and stored again. Promises (not values) are cached so
+  // concurrent requests for the same path share one zip read.
+  const imgCache = new Map<string, Promise<string | null>>();
+  let imgHits = 0;
+
   const arrayBuffer = await file.arrayBuffer();
+  const tUnzip = performance.now();
   const zip = await JSZip.loadAsync(arrayBuffer);
+  perfMeasure("epub unzip", tUnzip);
 
   const opfPath = await findOpfPath(zip);
   if (!opfPath) {
@@ -74,10 +90,13 @@ export async function parseEPUB(file: File): Promise<ParseResult> {
   const metadata = extractEpubMetadata(opfDoc);
   const manifest = extractManifest(opfDoc);
   const spine = extractSpine(opfDoc, manifest);
-  const cover = await extractCover(zip, manifest, opfPath);
+  const tCover = performance.now();
+  const cover = await extractCover(zip, manifest, opfPath, imgCache);
+  perfMeasure("epub cover extract", tCover);
 
   const chapters: { id: string; title: string; content: string; order: number; level: number }[] = [];
   let order = 0;
+  let maxChapterBytes = 0;
   const push = (title: string, content: string) => {
     if (!content.trim()) return;
     chapters.push({ id: generateId(), title, content, order: order++, level: 1 });
@@ -96,22 +115,64 @@ export async function parseEPUB(file: File): Promise<ParseResult> {
       continue;
     }
 
+    const tChapter = performance.now();
     const chapDoc = parser.parseFromString(fileContent, "application/xhtml+xml");
     const baseDir = dirOf(fullPath);
 
     // Inline images/styles into self-contained HTML, then split at headings.
-    await inlineResources(chapDoc, zip, baseDir, warnings);
+    const { imgCount, imgBytes } = await inlineResources(
+      chapDoc,
+      zip,
+      baseDir,
+      warnings,
+      imgCache,
+      () => {
+        imgHits += 1;
+      }
+    );
     const fallbackTitle = extractChapterTitle(chapDoc);
     const parts = splitAtHeadings(chapDoc, fallbackTitle);
     if (parts.length === 0) {
       warnings.push(`No readable content in: ${item.href}`);
       continue;
     }
-    for (const part of parts) push(part.title, part.html);
+    let chapterBytes = 0;
+    for (const part of parts) {
+      chapterBytes += part.html.length;
+      push(part.title, part.html);
+    }
+    maxChapterBytes = Math.max(maxChapterBytes, chapterBytes);
+    if (perfEnabled()) {
+      perfLog("epub chapter", {
+        file: item.href,
+        parts: parts.length,
+        html: formatBytes(chapterBytes),
+        imgs: imgCount,
+        imgBytes: formatBytes(imgBytes),
+        ms: Math.round((performance.now() - tChapter) * 10) / 10,
+      });
+    }
   }
 
   if (chapters.length === 0) {
     warnings.push("No chapters found in EPUB");
+  }
+
+  if (perfEnabled()) {
+    let uniqueImgBytes = 0;
+    for (const p of imgCache.values()) {
+      const url = await p;
+      if (url) uniqueImgBytes += url.length;
+    }
+    perfLog("epub import summary", {
+      file: file.name,
+      chapters: chapters.length,
+      maxChapter: formatBytes(maxChapterBytes),
+      uniqueImgs: imgCache.size,
+      uniqueImgBytes: formatBytes(uniqueImgBytes),
+      cacheHits: imgHits,
+      ms: Math.round((performance.now() - t0) * 10) / 10,
+    });
   }
 
   return { chapters, metadata, cover, warnings };
@@ -187,7 +248,8 @@ function extractSpine(
 async function extractCover(
   zip: JSZip,
   manifest: { id: string; href: string; mediaType: string }[],
-  opfPath: string
+  opfPath: string,
+  imgCache: Map<string, Promise<string | null>>
 ): Promise<BookCover | undefined> {
   const opfDir = dirOf(opfPath);
 
@@ -206,7 +268,7 @@ async function extractCover(
   if (!coverItem) return undefined;
 
   const fullPath = resolveEpubPath(opfDir, coverItem.href);
-  const dataUrl = await readImageAsDataUrl(zip, fullPath);
+  const dataUrl = await cachedImage(zip, fullPath, imgCache);
   if (!dataUrl) return undefined;
 
   const mime = dataUrl.match(/^data:(.*?);/)?.[1] ?? coverItem.mediaType;
@@ -229,8 +291,10 @@ async function inlineResources(
   doc: Document,
   zip: JSZip,
   baseDir: string,
-  warnings: string[]
-): Promise<void> {
+  warnings: string[],
+  imgCache: Map<string, Promise<string | null>>,
+  onCacheHit: () => void
+): Promise<{ imgCount: number; imgBytes: number }> {
   doc
     .querySelectorAll("script, form, audio, video, object, embed, iframe")
     .forEach((el) => el.remove());
@@ -273,12 +337,23 @@ async function inlineResources(
   });
 
   let missing = 0;
+  let imgCount = 0;
+  let imgBytes = 0;
   await Promise.all(
     targets.map(async ({ el, attr, href }) => {
-      const dataUrl = await readImageAsDataUrl(zip, resolveEpubPath(baseDir, href));
+      const path = resolveEpubPath(baseDir, href);
+      const had = imgCache.has(path);
+      const dataUrl = await cachedImage(zip, path, imgCache);
+      if (had) onCacheHit();
       if (dataUrl) {
         el.setAttribute(attr, dataUrl);
+        imgCount += 1;
+        imgBytes += dataUrl.length;
         if (el.tagName.toLowerCase() === "img") {
+          // Reader perf: images below the fold decode on demand instead of
+          // all up front, so image-heavy chapters open and scroll smoothly.
+          el.setAttribute("loading", "lazy");
+          el.setAttribute("decoding", "async");
           const existing = el.getAttribute("style") ?? "";
           el.setAttribute(
             "style",
@@ -312,6 +387,27 @@ async function inlineResources(
       a.replaceWith(span);
     }
   });
+
+  return { imgCount, imgBytes };
+}
+
+/**
+ * Deduplicating image reader: the first request for a zip path decodes and
+ * base64-encodes it, every repeat reuse shares the in-flight (or finished)
+ * promise. Covers and ornaments referenced from many spine files are the
+ * common case — without this they are re-encoded and stored N times.
+ */
+function cachedImage(
+  zip: JSZip,
+  path: string,
+  cache: Map<string, Promise<string | null>>
+): Promise<string | null> {
+  let pending = cache.get(path);
+  if (!pending) {
+    pending = readImageAsDataUrl(zip, path);
+    cache.set(path, pending);
+  }
+  return pending;
 }
 
 async function readText(zip: JSZip, path: string): Promise<string | null> {

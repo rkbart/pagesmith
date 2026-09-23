@@ -19,9 +19,10 @@ Build it when any of these become real features:
    series-level stats, etc.).
 
 Until then, IndexedDB (see `src/lib/store/idb-storage.ts`) removes the
-localStorage quota ceiling, and swapping storages later is an adapter
-change: zustand persist's `createJSONStorage(() => …)` is the single
-integration point.
+localStorage quota ceiling, and swapping storages later is contained:
+`saveNow`/`hydrateFromStorage` in `src/lib/store/project.ts` plus the
+storage adapter are the integration points (same `{state, version}`
+envelope).
 
 ## Why not now
 
@@ -56,7 +57,8 @@ and worker with the right headers. Next.js has no equivalent plugin, so:
    (analytics, CDN assets, embeds) must be CORP-compliant or it breaks.
 3. **Client-only init** — instantiate `SQLocalDrizzle` in a client module;
    await migrations before rendering data-dependent UI (gate the editor on
-   a `dbReady` flag, the same pattern as the existing `hasHydrated` gate).
+   a `dbReady` flag, the same pattern as the existing `hydrated` gate in
+   `useProjectHydrated`).
 4. **Verify the worker boots under Turbopack dev** before building
    features — this is the riskiest unknown.
 
