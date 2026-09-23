@@ -21,6 +21,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useProjectStore } from "@/lib/store/project";
+import { resolveEpubPath } from "@/lib/parsers/epub";
 import {
   DEFAULT_READER_PREFS,
   FONT_FAMILIES,
@@ -150,6 +151,87 @@ export function ReaderRoom({ project }: { project: Project }) {
   const chapter = chapters[index];
   const total = chapters.length;
 
+  /** Fragment (`#id`) awaiting scroll after a cross-chapter link jump. */
+  const pendingFragment = useRef<string | null>(null);
+
+  /**
+   * Resolve an intra-book link target (`other-file.xhtml`) to a chapter
+   * index. Matches against the spine hrefs recorded at import — exact
+   * relative resolution first, basename fallback for odd `../` layouts.
+   * Returns null when the target isn't a known chapter (cover pages,
+   * missing files): the click then stays put instead of 404ing.
+   */
+  const resolveChapterIndex = (hrefFile: string): number | null => {
+    if (!hrefFile) return null;
+    const currentSource = chapter?.source ?? "";
+    const base = currentSource.includes("/")
+      ? currentSource.slice(0, currentSource.lastIndexOf("/") + 1)
+      : "";
+    const resolved = resolveEpubPath(base, hrefFile);
+    let found = chapters.findIndex(
+      (c) => c.source !== undefined && c.source === resolved
+    );
+    if (found < 0) {
+      const baseName = hrefFile.split("/").pop() ?? "";
+      if (baseName) {
+        found = chapters.findIndex(
+          (c) => (c.source?.split("/").pop() ?? "") === baseName
+        );
+      }
+    }
+    return found < 0 ? null : found;
+  };
+
+  /**
+   * Intra-book links (`ch02.xhtml`, `ch02.xhtml#fn1`, `#fn1`) are preserved
+   * from the EPUB — without interception the browser navigates to
+   * `/read/<path>` and Next.js 404s. Resolve them to chapters/fragments
+   * instead; unresolvable targets stay put.
+   */
+  const handleContentClick = (event: React.MouseEvent) => {
+    const target = event.target;
+    const anchor =
+      target instanceof Element ? target.closest("a[href]") : null;
+    if (!anchor) return;
+    const raw = anchor.getAttribute("href") ?? "";
+    if (!raw) {
+      event.preventDefault();
+      return;
+    }
+    if (raw.startsWith("#")) {
+      // Same-chapter fragment — scroll manually so routing never engages.
+      if (raw.length > 1) {
+        event.preventDefault();
+        document
+          .getElementById(raw.slice(1))
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+      return;
+    }
+    // Absolute URLs were converted to spans at import; any remaining scheme
+    // (mailto:, javascript:, …) must not navigate.
+    if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(raw)) {
+      event.preventDefault();
+      return;
+    }
+    event.preventDefault();
+    const [filePart, frag] = raw.split("#");
+    const targetIndex = resolveChapterIndex(filePart);
+    if (targetIndex === null) return;
+    if (targetIndex === index) {
+      if (frag) {
+        document
+          .getElementById(frag)
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      } else {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+      return;
+    }
+    if (frag) pendingFragment.current = frag;
+    goTo(targetIndex);
+  };
+
   /** Move to a chapter; the scroll effect below does the repositioning. */
   const goTo = useCallback(
     (nextIndex: number) => {
@@ -172,19 +254,34 @@ export function ReaderRoom({ project }: { project: Project }) {
     if (chapterId) setActiveChapter(chapterId);
   }, [chapterId, setActiveChapter]);
 
-  // ---- Scroll: restore the bookmark, or start a new chapter at the top ----
+  // ---- Scroll: fragment jump, bookmark restore, or chapter top ---------
   useEffect(() => {
-    const saved = loadPosition(project.id);
-    const ratio = saved && saved.chapterId === chapterId ? saved.scrollRatio : 0;
+    // A cross-chapter link jump requested a fragment scroll — it wins over
+    // the bookmark for this navigation only.
+    const frag = pendingFragment.current;
+    pendingFragment.current = null;
     // Wait a frame so the incoming chapter is laid out before jumping.
     const frame = requestAnimationFrame(() => {
-      const max = document.documentElement.scrollHeight - window.innerHeight;
+      const oldBehavior = document.documentElement.style.scrollBehavior;
+      document.documentElement.style.scrollBehavior = "auto";
+      if (frag) {
+        const el = document.getElementById(frag);
+        if (el) {
+          el.scrollIntoView({ block: "start" });
+          requestAnimationFrame(() => {
+            document.documentElement.style.scrollBehavior = oldBehavior || "";
+          });
+          return;
+        }
+        // Fragment id not in this chapter (stale link) — fall through to
+        // the bookmark rather than stranding the reader mid-page.
+      }
+      const saved = loadPosition(project.id);
+      const ratio = saved && saved.chapterId === chapterId ? saved.scrollRatio : 0;
       // Disable smooth-scroll behavior while we restore the bookmark — we want
       // the chapter to appear first, then jump. A pending smooth animation would
       // start mid-flight and drag the page over several seconds.
-      const oldBehavior = document.documentElement.style.scrollBehavior;
-      document.documentElement.style.scrollBehavior = "auto";
-      window.scrollTo({ top: Math.min(1, Math.max(0, ratio)) * Math.max(0, max) });
+      window.scrollTo({ top: Math.min(1, Math.max(0, ratio)) * Math.max(0, document.documentElement.scrollHeight - window.innerHeight) });
       // Best-effort restore: if the global sheet re-applies smooth after us,
       // we leave the inline value so the next manual scroll in this tab is
       // unaffected. The reading progress bar is animated separately so it isn't
@@ -351,6 +448,7 @@ export function ReaderRoom({ project }: { project: Project }) {
                     fontSize: FONT_SIZE_STEPS[prefs.fontScale],
                     lineHeight: 1.75,
                   }}
+                  onClick={handleContentClick}
                   dangerouslySetInnerHTML={{ __html: chapter.content }}
                 />
 

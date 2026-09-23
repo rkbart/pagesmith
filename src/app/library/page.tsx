@@ -15,8 +15,10 @@ import {
   LayoutGrid,
   List,
   Loader2,
+  Pencil,
   Plus,
   Search,
+  Trash2,
   Upload,
   X,
 } from "lucide-react";
@@ -51,6 +53,7 @@ export default function LibraryPage() {
     deleteProject,
     createProject,
     createCollection,
+    renameCollection,
     deleteCollection,
     assignProject,
   } = useProjectStore();
@@ -169,8 +172,31 @@ export default function LibraryPage() {
       return;
     }
     setConfirmDeleteId(null);
+    setEditingId((editing) => (editing === id ? null : editing));
     deleteCollection(id);
     setCollapsedIds((prev) => prev.filter((c) => c !== id));
+  };
+
+  // Inline folder rename (pencil in the folder header).
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const renameCancelled = useRef(false);
+
+  const startRename = (id: string, current: string) => {
+    renameCancelled.current = false;
+    setConfirmDeleteId(null);
+    setEditingId(id);
+    setEditName(current);
+  };
+
+  const commitRename = () => {
+    if (editingId) renameCollection(editingId, editName);
+    setEditingId(null);
+  };
+
+  const cancelRename = () => {
+    renameCancelled.current = true;
+    setEditingId(null);
   };
 
   // Per-collection book counts for the folder headers.
@@ -526,53 +552,88 @@ export default function LibraryPage() {
                 aria-label={`Collection ${c.name}`}
               >
                 <div
-                  className={`flex items-center gap-1 px-2 py-1.5 ${
+                  className={`group flex items-center gap-1 px-2 py-1.5 ${
                     collapsed ? "" : "border-b bg-muted/50"
                   }`}
-                >                  <button
-                    type="button"
-                    onClick={() => toggleFolder(c.id)}
-                    aria-expanded={!collapsed}
-                    className="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-muted/50"
-                  >
-                    {collapsed ? (
-                      <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                    ) : (
-                      <ChevronDown className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                    )}
-                    {collapsed ? (
-                      <Folder className="size-4 shrink-0 text-brass" aria-hidden="true" />
-                    ) : (
+                >
+                  {editingId === c.id ? (
+                    <span className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5">
                       <FolderOpen className="size-4 shrink-0 text-brass" aria-hidden="true" />
-                    )}
-                    <span className="font-heading min-w-0 flex-1 truncate text-base">
-                      {c.name}
+                      <Input
+                        autoFocus
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") commitRename();
+                          if (e.key === "Escape") cancelRename();
+                        }}
+                        onBlur={() => {
+                          if (!renameCancelled.current) commitRename();
+                          renameCancelled.current = false;
+                        }}
+                        aria-label={`Rename collection ${c.name}`}
+                        className="h-8"
+                      />
                     </span>
-                    <span className="shrink-0 text-xs text-muted-foreground">
-                      {members.length} book{members.length === 1 ? "" : "s"}
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteCollection(c.id)}
-                    aria-label={
-                      confirmDeleteId === c.id
-                        ? `Confirm delete collection ${c.name} (books are kept)`
-                        : `Delete collection ${c.name} (books are kept)`
-                    }
-                    title="Delete collection — its books are kept"
-                    className={`mr-1 shrink-0 rounded-md p-1.5 text-xs transition-colors ${
-                      confirmDeleteId === c.id
-                        ? "bg-destructive font-medium text-destructive-foreground"
-                        : "text-muted-foreground hover:text-destructive"
-                    }`}
-                  >
-                    {confirmDeleteId === c.id ? (
-                      "Sure?"
-                    ) : (
-                      <X className="size-4" aria-hidden="true" />
-                    )}
-                  </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => toggleFolder(c.id)}
+                      aria-expanded={!collapsed}
+                      className="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-muted/50"
+                    >
+                      {collapsed ? (
+                        <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                      ) : (
+                        <ChevronDown className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                      )}
+                      {collapsed ? (
+                        <Folder className="size-4 shrink-0 text-brass" aria-hidden="true" />
+                      ) : (
+                        <FolderOpen className="size-4 shrink-0 text-brass" aria-hidden="true" />
+                      )}
+                      <span className="font-heading min-w-0 flex-1 truncate text-base">
+                        {c.name}
+                      </span>
+                      <span className="shrink-0 text-xs text-muted-foreground">
+                        {members.length} book{members.length === 1 ? "" : "s"}
+                      </span>
+                    </button>
+                  )}
+                  {editingId === c.id ? null : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => startRename(c.id, c.name)}
+                        aria-label={`Rename collection ${c.name}`}
+                        title="Rename collection"
+                        className="shrink-0 rounded-md p-1.5 text-muted-foreground transition-all hover:text-foreground md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"
+                      >
+                        <Pencil className="size-4" aria-hidden="true" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteCollection(c.id)}
+                        aria-label={
+                          confirmDeleteId === c.id
+                            ? `Confirm delete collection ${c.name} (books are kept)`
+                            : `Delete collection ${c.name} (books are kept)`
+                        }
+                        title="Delete collection — its books are kept"
+                        className={`mr-1 shrink-0 rounded-md p-1.5 text-xs transition-all ${
+                          confirmDeleteId === c.id
+                            ? "bg-destructive font-medium text-destructive-foreground"
+                            : "text-muted-foreground hover:text-destructive md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"
+                        }`}
+                      >
+                        {confirmDeleteId === c.id ? (
+                          "Sure?"
+                        ) : (
+                          <Trash2 className="size-4" aria-hidden="true" />
+                        )}
+                      </button>
+                    </>
+                  )}
                 </div>
                 {collapsed ? null : (
                   <div className="bg-muted/30 p-3 sm:p-4">

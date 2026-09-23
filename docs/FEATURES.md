@@ -40,9 +40,10 @@ Failed files are skipped and reported per row.
   import desk at `/convert`
 - Collections: expandable folders for grouping similar titles — folder
   headers with book counts and chevron toggle (collapse state persists),
-  inline create, two-step delete (books are kept, become unsorted),
-  per-book assignment picker on cards and rows; the unsorted shelf keeps its
-  pagination while folders list all members; persisted with the shelf
+  hover-revealed pencil (inline rename) and bin (two-step delete, books are
+  kept and become unsorted), inline create, per-book assignment picker on
+  cards and rows; the unsorted shelf keeps its pagination while folders list
+  all members; persisted with the shelf
 - Duplicate guardrails: importing a title that's already shelved shelves
   `Title (1)`, `Title (2)`, … instead (case-insensitive, existing suffixes
   collapse); same rule for collection names (`uniqueName` in

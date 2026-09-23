@@ -4,6 +4,10 @@ export interface Chapter {
   content: string; // HTML content
   order: number;
   level: number; // heading level 1-6, used for TOC nesting
+  /** OPF spine href this chapter was parsed from (e.g. "Text/ch02.xhtml").
+      Recorded at import so the reader can resolve intra-book links
+      (`other-file.xhtml#frag`) to chapters instead of navigating (404). */
+  source?: string;
 }
 
 export interface BookMetadata {

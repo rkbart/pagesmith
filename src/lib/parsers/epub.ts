@@ -94,12 +94,12 @@ export async function parseEPUB(file: File): Promise<ParseResult> {
   const cover = await extractCover(zip, manifest, opfPath, imgCache);
   perfMeasure("epub cover extract", tCover);
 
-  const chapters: { id: string; title: string; content: string; order: number; level: number }[] = [];
+  const chapters: { id: string; title: string; content: string; order: number; level: number; source: string }[] = [];
   let order = 0;
   let maxChapterBytes = 0;
-  const push = (title: string, content: string) => {
+  const push = (title: string, content: string, source: string) => {
     if (!content.trim()) return;
-    chapters.push({ id: generateId(), title, content, order: order++, level: 1 });
+    chapters.push({ id: generateId(), title, content, order: order++, level: 1, source });
   };
 
   for (const item of spine) {
@@ -139,7 +139,7 @@ export async function parseEPUB(file: File): Promise<ParseResult> {
     let chapterBytes = 0;
     for (const part of parts) {
       chapterBytes += part.html.length;
-      push(part.title, part.html);
+      push(part.title, part.html, item.href);
     }
     maxChapterBytes = Math.max(maxChapterBytes, chapterBytes);
     if (perfEnabled()) {

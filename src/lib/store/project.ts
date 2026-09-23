@@ -49,6 +49,8 @@ interface ProjectState {
   save: () => void;
   /** Create a shelf collection (folder). Names dedupe like book titles. */
   createCollection: (name: string) => string;
+  /** Rename a collection. Names dedupe against the other collections. */
+  renameCollection: (id: string, name: string) => void;
   /** Delete a collection — its books are kept and become unsorted. */
   deleteCollection: (id: string) => void;
   /** File a book into a collection, or pass null to unsort it. */
@@ -319,8 +321,23 @@ export const useProjectStore = create<ProjectState>()(
         return id;
       },
 
-      deleteCollection: (id) => {
+      renameCollection: (id, name) => {
+        const trimmed = name.trim();
+        if (!trimmed) return;
+        const unique = uniqueName(
+          trimmed,
+          get()
+            .collections.filter((c) => c.id !== id)
+            .map((c) => c.name)
+        );
         set((state) => ({
+          collections: state.collections.map((c) =>
+            c.id === id ? { ...c, name: unique } : c
+          ),
+        }));
+      },
+
+      deleteCollection: (id) => {        set((state) => ({
           collections: state.collections.filter((c) => c.id !== id),
           // Books survive — they just become unsorted.
           projects: state.projects.map((p) =>
