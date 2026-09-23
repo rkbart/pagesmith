@@ -1,5 +1,6 @@
 import type {
   AIConfig,
+  AIProvider,
   TranslationRequest,
   TranslationResult,
   EditRequest,
@@ -7,56 +8,213 @@ import type {
   ReadabilityResult,
   Language,
 } from "@/types/ai";
-import { generateId } from "@/lib/utils/text";
+import {
+  PROVIDERS,
+  PROVIDER_MAP,
+  DEFAULT_PROVIDER,
+  displayName,
+  resolveBaseURL,
+  type ProviderDef,
+} from "./providers";
 
-export function loadAIConfig(): AIConfig {
-  if (typeof window === "undefined") return { provider: "browser" };
-  try {
-    const stored = localStorage.getItem("pagesmith-ai-settings");
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      return {
-        provider: parsed.provider ?? "browser",
-        apiKey: parsed.provider === "openai" ? parsed.openaiKey : parsed.anthropicKey,
-        model: parsed.model,
-        temperature: 0.3,
-      };
-    }
-  } catch {
-    // fall through
-  }
-  return { provider: "browser" };
+/* ------------------------------------------------------------------ */
+/* Settings storage. Shape: { provider, keys, models, baseURLs } with  */
+/* automatic adoption of the legacy { openaiKey, anthropicKey, model }. */
+/* ------------------------------------------------------------------ */
+
+const STORE_KEY = "pagesmith-ai-settings";
+
+export interface AISettingsStore {
+  provider: AIProvider;
+  keys: Partial<Record<string, string>>;
+  models: Partial<Record<string, string>>;
+  baseURLs: Partial<Record<string, string>>;
 }
 
-async function callOpenAI(
-  apiKey: string,
-  model: string,
-  systemPrompt: string,
-  userPrompt: string
-): Promise<string> {
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      temperature: 0.3,
-    }),
-  });
+const EMPTY_STORE: AISettingsStore = {
+  provider: DEFAULT_PROVIDER,
+  keys: {},
+  models: {},
+  baseURLs: {},
+};
 
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error(err.error?.message ?? `OpenAI API error: ${response.status}`);
+function isProvider(id: unknown): id is AIProvider {
+  return typeof id === "string" && PROVIDERS_IDS.includes(id);
+}
+
+const PROVIDERS_IDS: readonly string[] = PROVIDERS.map((p) => p.id);
+
+export function loadSettingsStore(): AISettingsStore {
+  if (typeof window === "undefined") return { ...EMPTY_STORE };
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (!raw) return { ...EMPTY_STORE };
+    const parsed = JSON.parse(raw) as Partial<AISettingsStore> & {
+      openaiKey?: string;
+      anthropicKey?: string;
+      model?: string;
+    };
+    const store: AISettingsStore = {
+      provider: isProvider(parsed.provider) ? parsed.provider : DEFAULT_PROVIDER,
+      keys: { ...(parsed.keys ?? {}) },
+      models: { ...(parsed.models ?? {}) },
+      baseURLs: { ...(parsed.baseURLs ?? {}) },
+    };
+    // Legacy adoption (pre-registry shape).
+    if (parsed.openaiKey && !store.keys.openai) store.keys.openai = parsed.openaiKey;
+    if (parsed.anthropicKey && !store.keys.anthropic)
+      store.keys.anthropic = parsed.anthropicKey;
+    if (parsed.model && !store.models[store.provider]) {
+      if (store.provider === "openai" || store.provider === "anthropic") {
+        store.models[store.provider] = parsed.model;
+      }
+    }
+    return store;
+  } catch {
+    return { ...EMPTY_STORE };
+  }
+}
+
+export function saveSettingsStore(store: AISettingsStore): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(STORE_KEY, JSON.stringify(store));
+}
+
+export interface ResolvedConfig {
+  def: ProviderDef;
+  apiKey: string;
+  model: string;
+  baseURL: string;
+  temperature: number;
+}
+
+/** Merge stored settings with registry defaults for the active provider. */
+export function resolveConfig(config?: AIConfig): ResolvedConfig {
+  const store = loadSettingsStore();
+  const provider = config?.provider ?? store.provider;
+  const def = PROVIDER_MAP[provider] ?? PROVIDER_MAP[DEFAULT_PROVIDER];
+  const apiKey =
+    config?.apiKey ?? store.keys[def.id] ?? "";
+  const model =
+    (config?.model ?? store.models[def.id] ?? "").trim() || def.defaultModel;
+  return {
+    def,
+    apiKey,
+    model,
+    baseURL: resolveBaseURL(def, config?.baseURL ?? store.baseURLs[def.id]),
+    temperature: config?.temperature ?? 0.3,
+  };
+}
+
+export function loadAIConfig(): AIConfig {
+  const store = loadSettingsStore();
+  const def = PROVIDER_MAP[store.provider] ?? PROVIDER_MAP[DEFAULT_PROVIDER];
+  return {
+    provider: def.id,
+    apiKey: store.keys[def.id] ?? "",
+    model: store.models[def.id] ?? "",
+    baseURL: store.baseURLs[def.id] ?? "",
+    temperature: 0.3,
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Transports. One OpenAI-compatible chat client covers every provider  */
+/* except Anthropic (dedicated client) and browser (local stub).        */
+/* ------------------------------------------------------------------ */
+
+function localUnreachableHint(def: ProviderDef, baseURL: string): string {
+  if (def.id === "ollama") {
+    return (
+      `Ollama isn't reachable at ${baseURL}. Start it with \`ollama serve\` ` +
+      `(first run: \`ollama pull ${def.defaultModel}\`). Browsers also need CORS: ` +
+      `serve with OLLAMA_ORIGINS set, e.g. \`OLLAMA_ORIGINS=* ollama serve\`.`
+    );
+  }
+  if (def.id === "lmstudio") {
+    return (
+      `LM Studio isn't reachable at ${baseURL}. In LM Studio open the ` +
+      `Developer tab, load a model, and press Start Server.`
+    );
+  }
+  return (
+    `Nothing is listening at ${baseURL}. Start your server (or fix the ` +
+    `endpoint in Settings → Advanced) and make sure it allows browser ` +
+    `requests (CORS).`
+  );
+}
+
+async function openAICompatible(args: {
+  def: ProviderDef;
+  apiKey: string;
+  model: string;
+  baseURL: string;
+  system: string;
+  user: string;
+  temperature: number;
+  signal?: AbortSignal;
+}): Promise<string> {
+  const { def, apiKey, model, baseURL, system, user, temperature, signal } = args;
+  if (!model) {
+    throw new Error(
+      `No model set for ${displayName(def)}. Pick or type one in Settings → AI Provider.`
+    );
+  }
+  let response: Response;
+  try {
+    response = await fetch(`${baseURL}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: user },
+        ],
+        temperature,
+      }),
+      signal,
+    });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") throw err;
+    if (def.local) throw new Error(localUnreachableHint(def, baseURL));
+    throw new Error(
+      `Could not reach ${displayName(def)} from the browser. If it blocks ` +
+        `browser calls (CORS), no endpoint setting fixes that — use the same ` +
+        `model family through OpenRouter or Groq instead.`
+    );
   }
 
-  const data = await response.json();
-  return data.choices[0]?.message?.content ?? "";
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({} as Record<string, unknown>));
+    const message =
+      (err as { error?: { message?: string } }).error?.message ??
+      (typeof (err as { message?: unknown }).message === "string"
+        ? (err as { message: string }).message
+        : null);
+    if (response.status === 401 || response.status === 403) {
+      throw new Error(
+        `${displayName(def)} rejected the key (HTTP ${response.status}). Check it in Settings → AI Provider.`
+      );
+    }
+    throw new Error(
+      `${displayName(def)} error (HTTP ${response.status})${message ? `: ${message}` : "."}`
+    );
+  }
+
+  const data = (await response.json()) as {
+    choices?: { message?: { content?: string } }[];
+  };
+  const text = data.choices?.[0]?.message?.content ?? "";
+  if (!text.trim()) {
+    throw new Error(
+      `${displayName(def)} returned an empty reply — is "${model}" a valid model id for it?`
+    );
+  }
+  return text;
 }
 
 async function callAnthropic(
@@ -91,25 +249,74 @@ async function callAnthropic(
   return data.content?.[0]?.text ?? "";
 }
 
-async function callAI(config: AIConfig, systemPrompt: string, userPrompt: string): Promise<string> {
-  if (config.provider === "openai") {
-    if (!config.apiKey) throw new Error("OpenAI API key not configured. Go to Settings.");
-    return callOpenAI(config.apiKey, config.model || "gpt-4o-mini", systemPrompt, userPrompt);
+async function callAI(
+  config: AIConfig,
+  systemPrompt: string,
+  userPrompt: string
+): Promise<string> {
+  const r = resolveConfig(config);
+  if (r.def.kind === "browser") {
+    throw new Error(
+      "Browser mode only computes readability locally. Pick a provider in Settings → AI Provider for translate/edit."
+    );
   }
-  if (config.provider === "anthropic") {
-    if (!config.apiKey) throw new Error("Anthropic API key not configured. Go to Settings.");
-    return callAnthropic(config.apiKey, config.model || "claude-3-5-haiku-20241022", systemPrompt, userPrompt);
+  if (r.def.kind === "anthropic") {
+    if (!r.apiKey)
+      throw new Error("Anthropic API key not configured. Go to Settings.");
+    return callAnthropic(r.apiKey, r.model, systemPrompt, userPrompt);
   }
-  // Browser mode - basic fallback
-  return browserTranslate(systemPrompt, userPrompt);
+  if (r.def.needsKey && !r.apiKey) {
+    throw new Error(
+      `Add your ${displayName(r.def)} key. Add yours in Settings → AI Provider.`
+    );
+  }
+  return openAICompatible({
+    def: r.def,
+    apiKey: r.apiKey,
+    model: r.model,
+    baseURL: r.baseURL,
+    system: systemPrompt,
+    user: userPrompt,
+    temperature: r.temperature,
+  });
 }
 
-async function browserTranslate(_systemPrompt: string, userPrompt: string): Promise<string> {
-  // In browser mode, we use a simple dictionary-based approach
-  // For real translation, users should configure an API key
-  throw new Error(
-    "Browser-mode translation is limited. Configure an AI API key in Settings for full translation support."
-  );
+/** Tiny liveness probe for the Settings test button. */
+export async function testConnection(config?: AIConfig): Promise<string> {
+  const r = resolveConfig(config);
+  if (r.def.kind === "browser") {
+    return "Readability runs locally — nothing to test.";
+  }
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 20000);
+  try {
+    if (r.def.kind === "anthropic") {
+      if (!r.apiKey) throw new Error("Add an Anthropic key first.");
+      await callAnthropic(r.apiKey, r.model, "Reply with exactly: ok", "ok");
+      return "Connected.";
+    }
+    if (r.def.needsKey && !r.apiKey) {
+      throw new Error(`Add your ${displayName(r.def)} key first.`);
+    }
+    await openAICompatible({
+      def: r.def,
+      apiKey: r.apiKey,
+      model: r.model || r.def.defaultModel,
+      baseURL: r.baseURL,
+      system: "Reply with exactly: ok",
+      user: "ok",
+      temperature: 0,
+      signal: controller.signal,
+    });
+    return "Connected.";
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw new Error(`${displayName(r.def)} timed out after 20s — wrong endpoint or model?`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 export async function translateText(

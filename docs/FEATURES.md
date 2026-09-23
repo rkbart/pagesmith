@@ -84,7 +84,7 @@ Failed files are skipped and reported per row.
 
 - Readability scoring (offline, Flesch-Kincaid)
 - Translation, editing, summaries, chapter detection, consistency analysis (API or stub)
-- BYOK OpenAI / Anthropic via Settings
+- BYOK provider registry via Settings (Ollama local by default; OpenRouter, Token Harbor, OpenCode Zen, Hugging Face, NVIDIA, Groq, Gemini, DeepSeek, OpenAI, Anthropic, custom endpoint)
 - Browser-mode placeholder for free/local use
 
 ## Other

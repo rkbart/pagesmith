@@ -37,18 +37,18 @@ On `/editor`:
 - **Title / level** — chapter title input and heading-level select.
 - **Toolbar** — bold/italic/underline/strike, block format (p/h1–h4/quote), HR, bullet/numbered lists.
 - **Cover** — upload JPG/PNG/WebP in the sidebar.
-- **Metadata** — toggle from the top bar (title, author, language, ISBN, publisher, subject, description).
+- **Metadata** — its own page from the top bar (title → export, full publishing/discovery/series fields).
 
 ## 3. AI tools
 
 1. Toggle **AI Tools** in the top bar.
 2. Choose a tool:
    - **Readability** — Flesch-Kincaid, reading ease, word/sentence stats (works offline).
-   - **Translate** — needs API key in Settings.
-   - **Edit** — grammar/style/concise/formal/casual (needs API key).
+    - **Translate** — needs a provider in Settings (Ollama local by default).
+    - **Edit** — grammar/style/concise/formal/casual (needs a provider).
 3. Review the result → **Apply to Chapter** or copy.
 
-Configure keys at `/settings` (OpenAI or Anthropic BYOK).
+Configure a provider at `/settings` (Ollama, OpenRouter, Token Harbor, OpenCode Zen, Hugging Face, NVIDIA, Groq, Gemini, DeepSeek, OpenAI, Anthropic, or a custom endpoint — BYOK).
 
 ## 4. Read
 

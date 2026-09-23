@@ -1,4 +1,18 @@
-export type AIProvider = "browser" | "openai" | "anthropic" | "gemini";
+export type AIProvider =
+  | "browser"
+  | "ollama"
+  | "lmstudio"
+  | "openrouter"
+  | "tokenharbor"
+  | "opencodezen"
+  | "huggingface"
+  | "nvidia"
+  | "groq"
+  | "gemini"
+  | "deepseek"
+  | "openai"
+  | "anthropic"
+  | "custom";
 
 export type AITask =
   | "translate"
@@ -28,6 +42,8 @@ export interface AIConfig {
   provider: AIProvider;
   apiKey?: string;
   model?: string;
+  /** Endpoint override. Blank = the registry default for the provider. */
+  baseURL?: string;
   temperature?: number;
 }
 
