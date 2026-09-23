@@ -65,10 +65,11 @@ export function ExportBar({
             <Settings2 className="h-4 w-4 mr-1" /> Metadata
           </Link>
           <Button
-            variant={aiOpen ? "secondary" : "outline"}
+            variant={aiOpen ? "secondary" : "ghost"}
             size="sm"
             onClick={onToggleAI}
             aria-expanded={aiOpen}
+            className={aiOpen ? undefined : "bg-background"}
           >
             <Sparkles className="h-4 w-4 mr-1" /> AI Tools
           </Button>
@@ -80,10 +81,6 @@ export function ExportBar({
             <BookOpen className="h-4 w-4 mr-1" /> Read
           </Link>
 
-          <Link href="/convert" className={buttonVariants({ variant: "outline", size: "sm" })}>
-            Import file
-          </Link>
-
           <Separator orientation="vertical" className="mx-1 hidden h-6 sm:block" />
 
           <Button variant="brass" size="sm" onClick={handleExport} disabled={!canExport || exporting}>
@@ -92,7 +89,7 @@ export function ExportBar({
             ) : (
               <Download className="h-4 w-4 mr-1" />
             )}
-            Export EPUB
+            Publish EPUB
           </Button>
         </div>
         {error && <p className="w-full px-2 text-sm text-destructive">{error}</p>}
