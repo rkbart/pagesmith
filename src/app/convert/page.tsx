@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import {
@@ -11,6 +10,7 @@ import {
   AlignLeft,
   BookOpen,
   AlertCircle,
+  Info,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { FileDropZone } from "@/components/converter/FileDropZone";
@@ -34,17 +34,24 @@ import {
 } from "@/lib/utils/handoff";
 
 const formats = [
-  { icon: FileText, label: "PDF", href: "/convert/pdf" },
-  { icon: FileType2, label: "DOCX", href: "/convert/docx" },
-  { icon: Hash, label: "Markdown", href: "/convert/markdown" },
-  { icon: FileCode, label: "HTML", href: "/convert/html" },
-  { icon: AlignLeft, label: "TXT", href: "/convert/txt" },
-  { icon: BookOpen, label: "EPUB", href: "/convert/epub" },
+  { icon: FileText, label: "PDF" },
+  { icon: FileType2, label: "DOCX" },
+  { icon: Hash, label: "Markdown" },
+  { icon: FileCode, label: "HTML" },
+  { icon: AlignLeft, label: "TXT" },
+  { icon: BookOpen, label: "EPUB" },
 ];
 
 function newChapterId(): string {
   return Math.random().toString(36).substring(2, 9);
 }
+
+/**
+ * Batch cap: files parse sequentially and fully in memory, so an unbounded
+ * drop can lock the tab on time and RAM. 10 covers real merge use
+ * (multi-part manuscripts) while keeping worst-case import bounded.
+ */
+const MAX_BATCH_FILES = 10;
 
 /** First non-empty value wins — later files only fill in blanks. */
 function mergeMetadata(
@@ -67,6 +74,7 @@ function mergeMetadata(
 export default function ConvertHub() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [queue, setQueue] = useState<QueueItem[] | null>(null);
   const cancelRef = useRef(false);
   const { createProject, importChapters } = useProjectStore();
@@ -94,9 +102,18 @@ export default function ConvertHub() {
    */
   async function handleFiles(files: File[]) {
     setError(null);
+    setNotice(null);
     cancelRef.current = false;
 
-    const sorted = [...files].sort((a, b) =>
+    // Enforce the batch cap up front: extras are ignored, not queued.
+    const capped = files.slice(0, MAX_BATCH_FILES);
+    if (files.length > MAX_BATCH_FILES) {
+      setNotice(
+        `Batch limited to ${MAX_BATCH_FILES} files — the first ${MAX_BATCH_FILES} in filename order are imported, the rest were skipped.`
+      );
+    }
+
+    const sorted = [...capped].sort((a, b) =>
       a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" })
     );
     const items: QueueItem[] = sorted.map((file, i) => ({
@@ -154,6 +171,7 @@ export default function ConvertHub() {
   function resetQueue() {
     cancelRef.current = true;
     setQueue(null);
+    setNotice(null);
   }
 
   return (
@@ -162,8 +180,9 @@ export default function ConvertHub() {
         <p className="eyebrow mb-2">The import desk</p>
         <h1 className="heading-lg">Bring in a manuscript</h1>
         <p className="body-md-loose mx-auto mt-2 max-w-xl text-muted-foreground">
-          Drop one file to convert it — or drop several to bind them into a
-          single book, in filename order. Formats are detected per file.
+          Drop one file to convert it — or up to {MAX_BATCH_FILES} to bind
+          them into a single book, in filename order. Mixed formats are
+          welcome; each file is detected on its own.
         </p>
       </div>
 
@@ -176,7 +195,7 @@ export default function ConvertHub() {
             onFile={handleSingle}
             onFiles={handleFiles}
             multiple
-            label="Drop manuscripts here — one, or many to merge"
+            label={`Drop manuscripts here — one, or up to ${MAX_BATCH_FILES} to merge`}
           />
 
           {error && (
@@ -185,20 +204,26 @@ export default function ConvertHub() {
               {error}
             </p>
           )}
+          {notice && (
+            <p className="mt-3 flex items-center justify-center gap-1.5 text-sm text-muted-foreground">
+              <Info className="size-4 shrink-0" aria-hidden="true" />
+              {notice}
+            </p>
+          )}
 
           <div className="mt-10">
-            <p className="eyebrow mb-4 text-center">Or pick your source</p>
+            <p className="eyebrow mb-4 text-center">Allowed file formats</p>
             <div className="mx-auto grid max-w-3xl grid-cols-2 gap-3 sm:grid-cols-3">
               {formats.map((format) => (
-                <Link key={format.label} href={format.href}>
-                  <Card className="h-full items-center gap-2 p-5 text-center transition-all hover:-translate-y-0.5 hover:border-brass/40 hover:shadow-lift">
-                    <div className="mx-auto grid size-11 place-items-center rounded-xl bg-brass/10">
-                      <format.icon className="size-5 text-brass" aria-hidden="true" />
-                    </div>
-                    <h3 className="heading-sm">{format.label}</h3>
-                    <p className="code text-muted-foreground">→ EPUB</p>
-                  </Card>
-                </Link>
+                <Card
+                  key={format.label}
+                  className="h-full items-center gap-2 p-5 text-center"
+                >
+                  <div className="mx-auto grid size-11 place-items-center rounded-xl bg-brass/10">
+                    <format.icon className="size-5 text-brass" aria-hidden="true" />
+                  </div>
+                  <h3 className="heading-sm">{format.label}</h3>
+                </Card>
               ))}
             </div>
           </div>
