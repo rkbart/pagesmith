@@ -6,7 +6,6 @@ import { useProjectStore } from "@/lib/store/project";
 import { useProjectHydrated } from "@/hooks/useHydrated";
 import { ChapterList } from "@/components/editor/ChapterList";
 import { ChapterEditor } from "@/components/editor/ChapterEditor";
-import { MetadataForm } from "@/components/editor/MetadataForm";
 import { CoverUpload } from "@/components/editor/CoverUpload";
 import { ExportBar } from "@/components/editor/ExportBar";
 import { AIPanel } from "@/components/ai/AIPanel";
@@ -21,22 +20,8 @@ export default function EditorPage() {
     loadProject,
     addChapter,
   } = useProjectStore();
-  const [showMeta, setShowMeta] = useState(false);
   const [showAI, setShowAI] = useState(false);
-  const metaRef = useRef<HTMLDivElement>(null);
   const aiRef = useRef<HTMLDivElement>(null);
-
-  // The panels render below the (often very long) chapter editor — scroll
-  // them into view on open, otherwise the toggle looks dead.
-  const toggleMeta = () => {
-    const next = !showMeta;
-    setShowMeta(next);
-    if (next) {
-      requestAnimationFrame(() =>
-        metaRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
-      );
-    }
-  };
 
   const toggleAI = () => {
     const next = !showAI;
@@ -97,9 +82,7 @@ export default function EditorPage() {
     <div className="container px-4 sm:px-6 lg:px-8 py-6">
       <ExportBar
         project={project}
-        metaOpen={showMeta}
         aiOpen={showAI}
-        onToggleMeta={toggleMeta}
         onToggleAI={toggleAI}
       />
 
@@ -127,11 +110,6 @@ export default function EditorPage() {
               <Button variant="outline" onClick={() => addChapter()}>
                 <Plus className="mr-2 h-4 w-4" /> Add first chapter
               </Button>
-            </div>
-          )}
-          {showMeta && (
-            <div className="mt-6" ref={metaRef}>
-              <MetadataForm />
             </div>
           )}
           {showAI && (
