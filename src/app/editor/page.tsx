@@ -8,9 +8,19 @@ import { ChapterList } from "@/components/editor/ChapterList";
 import { ChapterEditor } from "@/components/editor/ChapterEditor";
 import { CoverUpload } from "@/components/editor/CoverUpload";
 import { ExportBar } from "@/components/editor/ExportBar";
+import { BackToTop } from "@/components/shared/BackToTop";
 import { AIPanel } from "@/components/ai/AIPanel";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Plus, Library, Feather, Loader2 } from "lucide-react";
+import {
+  Plus,
+  Library,
+  Feather,
+  Loader2,
+  List,
+  PanelLeftClose,
+  PanelLeftOpen,
+  X,
+} from "lucide-react";
 
 export default function EditorPage() {
   const {
@@ -22,6 +32,30 @@ export default function EditorPage() {
   } = useProjectStore();
   const [showAI, setShowAI] = useState(false);
   const aiRef = useRef<HTMLDivElement>(null);
+  // Chapters live in a slide hide/reveal panel on the left (drawer on
+  // mobile, collapsing sidebar on desktop). Initializer reads the viewport
+  // directly (safe: this runs below the hydration gate, like the library
+  // view pref).
+  const [sideOpen, setSideOpen] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      window.matchMedia("(min-width: 1024px)").matches
+  );
+
+  // On mobile, picking a chapter closes the drawer. A store subscription
+  // (not a render effect) so the set-state-in-effect rule stays satisfied.
+  useEffect(() => {
+    const unsub = useProjectStore.subscribe((state, prev) => {
+      if (
+        state.activeChapterId !== prev.activeChapterId &&
+        typeof window !== "undefined" &&
+        !window.matchMedia("(min-width: 1024px)").matches
+      ) {
+        setSideOpen(false);
+      }
+    });
+    return unsub;
+  }, []);
 
   const toggleAI = () => {
     const next = !showAI;
@@ -86,22 +120,99 @@ export default function EditorPage() {
         onToggleAI={toggleAI}
       />
 
-      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[280px_1fr]">
-        <aside className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="eyebrow">Chapters ({project.chapters.length})</h2>
-            <Button size="sm" onClick={() => addChapter()}>
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
-          <ChapterList />
-          <div className="border-t pt-4">
-            <h3 className="eyebrow mb-3">Cover</h3>
-            <CoverUpload />
+      <div className="mt-6 flex items-start gap-6">
+        {/* Desktop sidebar: slides hide/reveal, editor takes the freed room. */}
+        <aside
+          className={`hidden shrink-0 overflow-hidden transition-all duration-200 lg:block ${
+            sideOpen ? "w-70 opacity-100" : "w-0 opacity-0"
+          }`}
+          aria-hidden={!sideOpen}
+        >
+          <div className="w-70 space-y-3">
+            <div className="flex items-center gap-1 rounded-xl border bg-card px-2 py-1.5 shadow-panel">
+              <button
+                type="button"
+                onClick={() => setSideOpen(false)}
+                aria-label="Hide chapters"
+                title="Hide chapters"
+                className="shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <PanelLeftClose className="size-4" aria-hidden="true" />
+              </button>
+              <span className="eyebrow min-w-0 flex-1 truncate px-1">
+                Chapters ({project.chapters.length})
+              </span>
+              <Button size="sm" onClick={() => addChapter()} aria-label="Add chapter">
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+            <ChapterList />
           </div>
         </aside>
 
-        <div className="min-w-0">
+        {/* Slim rail while the desktop sidebar is hidden. */}
+        {!sideOpen && (
+          <button
+            type="button"
+            onClick={() => setSideOpen(true)}
+            aria-label="Show chapters"
+            title="Show chapters"
+            className="sticky top-20 hidden shrink-0 flex-col items-center gap-2 rounded-xl border bg-card px-2 py-3 shadow-panel transition-colors hover:text-foreground lg:flex"
+          >
+            <PanelLeftOpen className="size-4" aria-hidden="true" />
+            <span className="text-xs text-muted-foreground [writing-mode:vertical-rl]">
+              Chapters ({project.chapters.length})
+            </span>
+          </button>
+        )}
+
+        {/* Mobile drawer. */}
+        <div
+          className={`fixed inset-0 z-50 lg:hidden ${sideOpen ? "" : "pointer-events-none"}`}
+          aria-hidden={!sideOpen}
+        >
+          <div
+            onClick={() => setSideOpen(false)}
+            className={`absolute inset-0 bg-black/40 transition-opacity duration-200 ${sideOpen ? "opacity-100" : "opacity-0"}`}
+          />
+          <aside
+            className={`absolute inset-y-0 left-0 flex w-80 max-w-[85vw] flex-col bg-background shadow-panel transition-transform duration-200 ${sideOpen ? "translate-x-0" : "-translate-x-full"}`}
+            role="dialog"
+            aria-label="Chapters"
+          >
+            <div className="flex items-center gap-1 border-b px-3 py-2.5">
+              <span className="eyebrow min-w-0 flex-1 truncate px-1">
+                Chapters ({project.chapters.length})
+              </span>
+              <Button size="sm" onClick={() => addChapter()} aria-label="Add chapter">
+                <Plus className="h-4 w-4" />
+              </Button>
+              <button
+                type="button"
+                onClick={() => setSideOpen(false)}
+                aria-label="Close chapters"
+                className="shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <X className="size-5" aria-hidden="true" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-3">
+              <ChapterList />
+            </div>
+          </aside>
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <CoverUpload />
+          <button
+            type="button"
+            onClick={() => setSideOpen(true)}
+            className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border bg-card px-4 py-2.5 text-sm shadow-panel transition-colors hover:border-brass/40 lg:hidden"
+          >
+            <List className="size-4 text-brass" aria-hidden="true" />
+            Chapters ({project.chapters.length})
+          </button>
+          <div className="mt-4">
           {activeChapter ? (
             <ChapterEditor key={activeChapter.id} chapter={activeChapter} />
           ) : (
@@ -117,8 +228,10 @@ export default function EditorPage() {
               <AIPanel />
             </div>
           )}
+          </div>
         </div>
       </div>
+      <BackToTop />
     </div>
   );
 }

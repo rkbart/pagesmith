@@ -1,13 +1,20 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useProjectStore } from "@/lib/store/project";
 import { ImagePlus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+/**
+ * Compact cover strip: thumbnail + status + change/remove actions in one
+ * row. Lives above the chapter editor — the old full-width card buried the
+ * upload affordance and stretched covers awkwardly.
+ */
 export function CoverUpload() {
   const { project, setCover } = useProjectStore();
   const inputRef = useRef<HTMLInputElement>(null);
+  // Two-step delete confirm (no dialog needed for one destructive action).
+  const [confirming, setConfirming] = useState(false);
 
   const handleFile = useCallback(
     (file: File) => {
@@ -27,44 +34,82 @@ export function CoverUpload() {
     [setCover]
   );
 
-  if (project?.cover) {
-    return (
-      <div className="relative group">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
+  if (!project) return null;
+
+  return (
+    <section
+      aria-label="Book cover"
+      className="flex items-center gap-3 rounded-xl border bg-card p-3 shadow-panel sm:gap-4"
+    >
+      {project.cover ? (
+        // eslint-disable-next-line @next/next/no-img-element
         <img
           src={project.cover.data}
           alt="Book cover"
-          className="w-full rounded-xl border shadow-panel"
+          className="h-20 w-14 shrink-0 rounded-lg border object-cover sm:h-24 sm:w-16"
         />
+      ) : (
         <button
-          onClick={() => setCover(undefined)}
-          className="absolute top-2 right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-          aria-label="Remove cover"
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          aria-label="Upload cover image"
+          className="grid h-20 w-14 shrink-0 place-items-center rounded-lg border-2 border-dashed border-brass/30 text-brass transition-colors hover:border-brass/60 hover:bg-brass/5 sm:h-24 sm:w-16"
         >
-          <X className="h-4 w-4" />
+          <ImagePlus className="size-6" aria-hidden="true" />
         </button>
+      )}
+      <div className="min-w-0 flex-1">
+        <p className="eyebrow">Cover</p>
+        <p className="mt-0.5 truncate text-sm text-muted-foreground">
+          {project.cover
+            ? "Set — prints as the book's first page."
+            : "None yet — readers see a placeholder."}
+        </p>
+      </div>
+      {project.cover ? (
+        <>
+          <Button
+            variant="outline"
+            size="sm"
+            className="shrink-0"
+            onClick={() => inputRef.current?.click()}
+          >
+            Replace
+          </Button>
+          <button
+            type="button"
+            onClick={() => {
+              if (!confirming) {
+                setConfirming(true);
+                setTimeout(() => setConfirming(false), 3000);
+                return;
+              }
+              setConfirming(false);
+              setCover(undefined);
+            }}
+            aria-label={
+              confirming ? "Confirm remove cover" : "Remove cover"
+            }
+            title="Remove cover"
+            className={`shrink-0 rounded-md p-1.5 text-xs transition-colors ${
+              confirming
+                ? "bg-destructive font-medium text-destructive-foreground"
+                : "text-muted-foreground hover:text-destructive"
+            }`}
+          >
+            {confirming ? "Sure?" : <X className="size-4" aria-hidden="true" />}
+          </button>
+        </>
+      ) : (
         <Button
           variant="outline"
           size="sm"
-          className="w-full mt-2"
+          className="shrink-0"
           onClick={() => inputRef.current?.click()}
         >
-          Replace Cover
+          Upload
         </Button>
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      <button
-        onClick={() => inputRef.current?.click()}
-        className="w-full rounded-xl border-2 border-dashed border-brass/30 p-6 flex flex-col items-center gap-2 text-muted-foreground hover:border-brass/60 hover:bg-brass/5 transition-colors"
-      >
-        <ImagePlus className="h-8 w-8 text-brass" aria-hidden="true" />
-        <span className="text-sm">Upload cover image</span>
-        <span className="text-xs">JPG, PNG, or WebP</span>
-      </button>
+      )}
       <input
         ref={inputRef}
         type="file"
@@ -76,6 +121,6 @@ export function CoverUpload() {
           e.target.value = "";
         }}
       />
-    </div>
+    </section>
   );
 }

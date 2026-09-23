@@ -4,7 +4,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
-  ArrowUp,
   BookOpenCheck,
   ChevronLeft,
   ChevronRight,
@@ -12,6 +11,7 @@ import {
   Minus,
   Plus,
 } from "lucide-react";
+import { BackToTop } from "@/components/shared/BackToTop";
 import { ReaderToc } from "./ReaderToc";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -119,31 +119,8 @@ function TypeControls({
  * the reader itself — the updater bails out unless visibility flips.
  */
 function BackToTopButton() {
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    const onScroll = () =>
-      setVisible((was) => {
-        const next = window.scrollY > 600;
-        return was === next ? was : next;
-      });
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
-  if (!visible) return null;
   return (
-    <Button
-      variant="outline"
-      size="icon"
-      aria-label="Back to top"
-      title="Back to top"
-      onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-      className="pointer-events-auto size-11 shrink-0 rounded-full border bg-background shadow-panel"
-    >
-      <ArrowUp />
-    </Button>
+    <BackToTop className="pointer-events-auto size-11 shrink-0 rounded-full border bg-background shadow-panel" />
   );
 }
 
@@ -228,6 +205,15 @@ export function ReaderRoom({ project }: { project: Project }) {
     const anchor =
       target instanceof Element ? target.closest("a[href]") : null;
     if (!anchor) return;
+    // Editor-inserted cross-chapter links carry the target chapter id —
+    // resolve directly (export rewrites these to file hrefs for ereaders).
+    const chapterRef = anchor.getAttribute("data-chapter");
+    if (chapterRef) {
+      event.preventDefault();
+      const targetIndex = chapters.findIndex((c) => c.id === chapterRef);
+      if (targetIndex >= 0 && targetIndex !== index) goTo(targetIndex);
+      return;
+    }
     const raw = anchor.getAttribute("href") ?? "";
     if (!raw) {
       event.preventDefault();

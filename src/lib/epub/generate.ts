@@ -244,14 +244,42 @@ export async function buildEpub(project: Project): Promise<BuildResult> {
     level: ch.level,
   }));
 
+  // Internal chapter links (`data-chapter="<id>"` from the editor) resolve
+  // to real file hrefs here — filenames only exist at export time. All
+  // chapter files share the text/ directory, so basenames suffice.
+  const hrefByChapterId = new Map<string, string>();
+  project.chapters.forEach((ch, i) =>
+    hrefByChapterId.set(
+      ch.id,
+      chapterFiles[i].href.split("/").pop() ?? chapterFiles[i].href
+    )
+  );
+  const resolveChapterLinks = (html: string): string => {
+    if (!html.includes("data-chapter")) return html;
+    const doc = new DOMParser().parseFromString(`<body>${html}</body>`, "text/html");
+    let changed = false;
+    doc.querySelectorAll("a[data-chapter]").forEach((a) => {
+      const href = hrefByChapterId.get(a.getAttribute("data-chapter") ?? "");
+      if (href) {
+        a.setAttribute("href", href);
+        changed = true;
+      }
+    });
+    return changed ? doc.body.innerHTML : html;
+  };
+  const resolvedChapters = project.chapters.map((ch) => ({
+    ...ch,
+    content: resolveChapterLinks(ch.content),
+  }));
+
   // OEBPS files
   zip.file("OEBPS/content.opf", buildContentOpf(project, chapterFiles, !!project.cover));
   zip.file("OEBPS/nav.xhtml", buildNav(project, chapterFiles));
   zip.file("OEBPS/styles.css", buildStyles());
 
   // Chapter files
-  for (let i = 0; i < project.chapters.length; i++) {
-    const xhtml = buildChapterXhtml(project, project.chapters[i]);
+  for (let i = 0; i < resolvedChapters.length; i++) {
+    const xhtml = buildChapterXhtml(project, resolvedChapters[i]);
     zip.file(`OEBPS/${chapterFiles[i].href}`, xhtml);
   }
 

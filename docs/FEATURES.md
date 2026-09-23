@@ -55,7 +55,8 @@ Failed files are skipped and reported per row.
 ## Editor
 
 - Chapter CRUD with drag-and-drop reorder
-- Rich-text contenteditable toolbar (inline + block formats)
+- Rich-text contenteditable toolbar: undo/redo, inline + block formats, alignment, lists, rule, external links (inline URL composer), unlink, clear formatting, image insert, chapter links, and one-tap index generation
+- Chapter links (`data-chapter` ids) resolve in-app to chapters and are rewritten to file hrefs on export
 - Heading level (1–6) for TOC nesting
 - Metadata form: core fields always visible (title, subtitle, author, language, reading direction, export file-name override, description; live word-count/reading-time chip) plus collapsed Contributors (translator/editor/illustrator/cover designer with marc roles), Publishing (publisher, publication date, ISBN, edition, rights, producer), Discovery (subject, keywords, BISAC category, audience), and Series (name + position) sections — all emitted as standard EPUB 3 OPF and read back on import
 - Cover upload (base64 data URL)
