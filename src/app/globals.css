@@ -152,6 +152,17 @@
     background: var(--brass-soft);
     color: #fffdf7;
   }
+
+  /*
+   * Tailwind v4's preflight resets buttons to `cursor: default`, while links
+   * keep the browser's pointer — so only some clickables showed a hand.
+   * Every enabled button (raw or Base UI primitive) gets the pointer back;
+   * disabled stays default. Text inputs keep the text cursor (untouched).
+   */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
 }
 
 /* ---- PageSmith type scale (serif display, sans UI) ---- */
