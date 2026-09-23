@@ -10,11 +10,15 @@ import {
   List,
   Loader2,
   Plus,
+  Search,
   Upload,
+  X,
 } from "lucide-react";
 import { ProjectCard } from "@/components/library/ProjectCard";
 import { ProjectRow } from "@/components/library/ProjectRow";
+import { ShelfPagination } from "@/components/library/ShelfPagination";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useProjectHydrated } from "@/hooks/useHydrated";
 import { useProjectStore } from "@/lib/store/project";
 import {
@@ -22,7 +26,11 @@ import {
   saveLibraryView,
   type LibraryView,
 } from "@/lib/utils/library-prefs";
+import { matchesQuery, paginate } from "@/lib/utils/library-search";
 import { clearPosition } from "@/lib/utils/reading-progress";
+
+/** Page sizes per layout — list rows are short, cards are tall. */
+const PER_PAGE: Record<LibraryView, number> = { cards: 12, list: 10 };
 
 export default function LibraryPage() {
   const router = useRouter();
@@ -32,6 +40,8 @@ export default function LibraryPage() {
   // Reading localStorage in an initializer is safe here: everything below the
   // hydration gate renders on the client only, so server HTML can't disagree.
   const [view, setView] = useState<LibraryView>(() => loadLibraryView());
+  const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     saveLibraryView(view);
@@ -46,6 +56,34 @@ export default function LibraryPage() {
     () => projects.reduce((sum, p) => sum + p.chapters.length, 0),
     [projects]
   );
+
+  // Search-then-paginate: a new query or layout restarts on page one (handled
+  // in the event handlers below, not an effect — resetting state inside
+  // effects causes cascading renders). Deletions or tightened searches can
+  // strand the page past the end, so `paginate` clamps and we render the
+  // clamped value directly.
+  const filtered = useMemo(
+    () => shelf.filter((p) => matchesQuery(p, query)),
+    [shelf, query]
+  );
+  const perPage = PER_PAGE[view];
+  const { items: visible, safePage, totalPages } = useMemo(
+    () => paginate(filtered, page, perPage),
+    [filtered, page, perPage]
+  );
+  const currentPage = page !== safePage ? safePage : page;
+
+  const searching = query.trim().length > 0;
+
+  const handleQuery = (next: string) => {
+    setQuery(next);
+    setPage(1);
+  };
+
+  const handleView = (next: LibraryView) => {
+    setView(next);
+    setPage(1);
+  };
 
   const openBook = (id: string) => {
     loadProject(id);
@@ -129,7 +167,7 @@ export default function LibraryPage() {
               aria-pressed={view === "cards"}
               aria-label="Card view"
               title="Card view"
-              onClick={() => setView("cards")}
+              onClick={() => handleView("cards")}
             >
               <LayoutGrid />
             </Button>
@@ -139,7 +177,7 @@ export default function LibraryPage() {
               aria-pressed={view === "list"}
               aria-label="List view"
               title="List view"
-              onClick={() => setView("list")}
+              onClick={() => handleView("list")}
             >
               <List />
             </Button>
@@ -152,53 +190,114 @@ export default function LibraryPage() {
         </div>
       </div>
 
-      {view === "cards" ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4">
-          {shelf.map((project) => (
-            <ProjectCard
-              key={project.id}
-              project={project}
-              onOpen={openBook}
-              onRead={readBook}
-              onDelete={deleteBook}
-            />
-          ))}
-
+      <div className="relative mb-8 max-w-md">
+        <Search
+          className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+          aria-hidden="true"
+        />
+        <Input
+          type="search"
+          value={query}
+          onChange={(e) => handleQuery(e.target.value)}
+          placeholder="Search titles, authors, chapters…"
+          aria-label="Search your library"
+          className="bg-card pr-9 pl-9 shadow-panel"
+        />
+        {searching && (
           <button
             type="button"
-            onClick={startBlank}
-            className="flex min-h-56 flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-brass/30 bg-paper p-6 text-center text-muted-foreground transition-all hover:-translate-y-0.5 hover:border-brass/60 hover:bg-brass/5"
+            onClick={() => handleQuery("")}
+            aria-label="Clear search"
+            className="absolute top-1/2 right-2.5 -translate-y-1/2 rounded-md p-1 text-muted-foreground transition-colors hover:text-foreground"
           >
-            <span className="grid size-12 place-items-center rounded-xl bg-brass/10">
-              <Plus className="size-5 text-brass" aria-hidden="true" />
-            </span>
-            <span className="font-heading text-base text-foreground">
-              Start a new book
-            </span>
-            <span className="text-xs">Blank pages, ready to fill</span>
+            <X className="size-4" aria-hidden="true" />
           </button>
+        )}
+      </div>
+
+      {filtered.length === 0 ? (
+        <div className="rounded-xl border bg-card p-10 text-center shadow-panel">
+          <p className="font-heading text-lg">Nothing on this shelf matches</p>
+          <p className="body-md-loose mt-2 text-muted-foreground">
+            No titles, authors, or chapter text contain “{query.trim()}”.
+          </p>
+          <Button variant="outline" className="mt-6" onClick={() => handleQuery("")}>
+            <X />
+            Clear the search
+          </Button>
         </div>
       ) : (
-        <div className="flex flex-col gap-2">
-          {shelf.map((project) => (
-            <ProjectRow
-              key={project.id}
-              project={project}
-              onOpen={openBook}
-              onRead={readBook}
-              onDelete={deleteBook}
-            />
-          ))}
+        <>
+          {searching && (
+            <p className="mb-4 text-sm text-muted-foreground" aria-live="polite">
+              {filtered.length} match{filtered.length === 1 ? "" : "es"} for
+              “{query.trim()}”
+              {totalPages > 1 ? ` · page ${currentPage} of ${totalPages}` : ""}
+            </p>
+          )}
 
-          <button
-            type="button"
-            onClick={startBlank}
-            className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-brass/30 bg-paper p-4 text-sm text-muted-foreground transition-colors hover:border-brass/60 hover:bg-brass/5 hover:text-foreground"
-          >
-            <Plus className="size-4 text-brass" aria-hidden="true" />
-            Start a new book
-          </button>
-        </div>
+          {view === "cards" ? (
+            <div
+              className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4"
+              aria-live="polite"
+            >
+              {visible.map((project) => (
+                <ProjectCard
+                  key={project.id}
+                  project={project}
+                  onOpen={openBook}
+                  onRead={readBook}
+                  onDelete={deleteBook}
+                />
+              ))}
+
+              {!searching && currentPage === totalPages && (
+                <button
+                  type="button"
+                  onClick={startBlank}
+                  className="flex min-h-56 flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-brass/30 bg-paper p-6 text-center text-muted-foreground transition-all hover:-translate-y-0.5 hover:border-brass/60 hover:bg-brass/5"
+                >
+                  <span className="grid size-12 place-items-center rounded-xl bg-brass/10">
+                    <Plus className="size-5 text-brass" aria-hidden="true" />
+                  </span>
+                  <span className="font-heading text-base text-foreground">
+                    Start a new book
+                  </span>
+                  <span className="text-xs">Blank pages, ready to fill</span>
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2" aria-live="polite">
+              {visible.map((project) => (
+                <ProjectRow
+                  key={project.id}
+                  project={project}
+                  onOpen={openBook}
+                  onRead={readBook}
+                  onDelete={deleteBook}
+                />
+              ))}
+
+              {!searching && currentPage === totalPages && (
+                <button
+                  type="button"
+                  onClick={startBlank}
+                  className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-brass/30 bg-paper p-4 text-sm text-muted-foreground transition-colors hover:border-brass/60 hover:bg-brass/5 hover:text-foreground"
+                >
+                  <Plus className="size-4 text-brass" aria-hidden="true" />
+                  Start a new book
+                </button>
+              )}
+            </div>
+          )}
+
+          <ShelfPagination
+            page={currentPage}
+            totalPages={totalPages}
+            onChange={setPage}
+          />
+        </>
       )}
 
       <p className="mt-8 flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground">

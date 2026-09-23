@@ -15,8 +15,13 @@
 
 On `/library` every book sits on a shelf, newest first:
 
+- **Search** the box under the header — it matches titles, authors, *and*
+  chapter text; clear it with the × inside the box or the button in the
+  empty state.
 - Switch between **card** and **list** layouts with the segmented control in
   the header — the choice is remembered on this device.
+- The shelf pages itself (12 cards or 10 rows per page); new searches
+  always start back on page one.
 - **Read** opens the reading room (it resumes the page you stopped on),
   **Edit** opens the studio, the trash icon deletes (with confirmation).
 - The **New book / Start a new book** tile creates a blank project.

@@ -17,6 +17,7 @@
 - `CoverArt` — real cover, or a monogram placeholder (serif initial, brass rules) so the book title prints exactly once per shelf item (as the heading).
 - `ProjectCard` — card-shelf item: cover button (opens the studio), heading + author/updated line, Read / Edit / Delete actions.
 - `ProjectRow` — dense list-shelf row: thumb, title/meta line, icon-only Read / Edit / Delete on mobile (labeled on `sm+`).
+- `ShelfPagination` — first/prev/numbered/next/last pager with windowed numbers + ellipsis; compact "Page X of Y" label on phones. `pageNumbers()` is exported for testing.
 - `DeleteProjectDialog` — shared destructive confirm (chapter count + cover note), used by both card and row.
 
 ## Converter (`src/components/converter/`)
@@ -47,6 +48,7 @@
 - `handoff.ts` — stage a dropped file in sessionStorage so `/convert/[format]` can auto-parse it.
 - `reading-progress.ts` — per-book bookmarks (`chapterId` + scroll ratio) and reader typography prefs, both localStorage.
 - `library-prefs.ts` — library cards/list layout choice, localStorage.
+- `library-search.ts` — pure helpers: `matchesQuery` (title/author/chapter-title/chapter-text, HTML stripped), `paginate` (1-based slice + clamped page), `plainText`.
 - `text.ts` — `generateId`, `slugify`, `truncate`, `stripHtml`, `escapeHtml`, `formatFileSize`, `formatUpdated`, `chapterLabel`, `delay`.
 
 ## UI primitives (`src/components/ui/`)

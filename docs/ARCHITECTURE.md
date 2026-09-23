@@ -15,6 +15,8 @@ File drop / picker
 Library (src/app/library/page.tsx)
   → shelf of every project, newest first
   → `LayoutGrid`/`List` view toggle (persisted via src/lib/utils/library-prefs.ts)
+  → search (titles, authors, chapter text) + pagination (12/page cards,
+     10/page list) via src/lib/utils/library-search.ts + ShelfPagination
   → `ProjectCard` / `ProjectRow`, both with `CoverArt` (real cover or
      monogram placeholder — the title prints exactly once, as the heading)
   → loadProject(id) → Editor or Reading Room;  deleteProject(id) via shared
@@ -67,7 +69,7 @@ Settings (src/app/settings/page.tsx)
 - `/` landing (Hero, ProcessPipeline, FormatStrip, FeatureBento, AIBand, FinalCta)
 - `/convert` import desk (single or multi-file → merged book)
 - `/convert/[format]` dynamic parse page (pdf, docx, markdown, html, txt, epub)
-- `/library` shelf of every book (cards/list toggle, open, read, delete)
+- `/library` shelf of every book (cards/list toggle, search, pagination, open, read, delete)
 - `/editor` multi-chapter editor
 - `/read` reading room for the active (or most recent) book
 - `/check` EPUB validator

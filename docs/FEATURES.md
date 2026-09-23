@@ -22,6 +22,12 @@ Failed files are skipped and reported per row.
 - Card or list shelf of every book, newest first — toggle with the
   `LayoutGrid` / `List` segmented control; the choice persists in
   `localStorage["pagesmith-library-view"]` (`src/lib/utils/library-prefs.ts`)
+- Search across titles, authors, and chapter text (`matchesQuery` in
+  `src/lib/utils/library-search.ts`): case-insensitive, HTML tags stripped
+  before matching so chapter bodies hit; empty state with a clear button
+- Pagination via `ShelfPagination` (12/page in cards, 10/page in list):
+  first/prev/numbered/next/last with windowed numbers (`1 … 5 6 7 … 12`);
+  phones get a compact "Page X of Y" label; new queries restart on page one
 - Real cover art, or a monogram placeholder (`CoverArt`): a serif initial on
   a paper-to-secondary gradient with brass rules — the book title is printed
   exactly once per card/row (as the heading), so cover-less books no longer
