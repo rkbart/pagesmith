@@ -16,9 +16,7 @@ import {
   Library,
   Feather,
   Loader2,
-  List,
-  PanelLeftClose,
-  PanelLeftOpen,
+  Sparkles,
   X,
 } from "lucide-react";
 
@@ -30,12 +28,8 @@ export default function EditorPage() {
     loadProject,
     addChapter,
   } = useProjectStore();
-  const [showAI, setShowAI] = useState(false);
-  const aiRef = useRef<HTMLDivElement>(null);
   // Chapters live in a slide hide/reveal panel on the left (drawer on
-  // mobile, collapsing sidebar on desktop). Initializer reads the viewport
-  // directly (safe: this runs below the hydration gate, like the library
-  // view pref).
+  // mobile, collapsing sidebar on desktop).
   const [sideOpen, setSideOpen] = useState(
     () =>
       typeof window !== "undefined" &&
@@ -57,15 +51,18 @@ export default function EditorPage() {
     return unsub;
   }, []);
 
-  const toggleAI = () => {
-    const next = !showAI;
-    setShowAI(next);
-    if (next) {
-      requestAnimationFrame(() =>
-        aiRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
-      );
-    }
-  };
+  // AI Tools live in a right slide-over so the chapter stays visible
+  // while they run — no backdrop on desktop, dimmed backdrop on mobile.
+  const [aiOpen, setAiOpen] = useState(false);
+
+  useEffect(() => {
+    if (!aiOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setAiOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [aiOpen]);
 
   // State lives in IndexedDB, which hydrates asynchronously after mount — gate
   // the UI on it so the empty state never flashes and the auto-load below
@@ -116,29 +113,19 @@ export default function EditorPage() {
     <div className="container px-4 sm:px-6 lg:px-8 py-6">
       <ExportBar
         project={project}
-        aiOpen={showAI}
-        onToggleAI={toggleAI}
+        aiOpen={aiOpen}
+        onToggleAI={() => setAiOpen((v) => !v)}
+        chaptersOpen={sideOpen}
+        onToggleChapters={() => setSideOpen((v) => !v)}
+        chaptersCount={project.chapters.length}
       />
 
       <div className="mt-6 flex items-start gap-6">
-        {/* Desktop sidebar: slides hide/reveal, editor takes the freed room. */}
-        <aside
-          className={`hidden shrink-0 overflow-hidden transition-all duration-200 lg:block ${
-            sideOpen ? "w-70 opacity-100" : "w-0 opacity-0"
-          }`}
-          aria-hidden={!sideOpen}
-        >
-          <div className="w-70 space-y-3">
+        {/* Desktop sidebar: always visible. Chapters hide only behind the
+            mobile drawer below. */}
+        <aside className="hidden w-70 shrink-0 lg:block">
+          <div className="space-y-3">
             <div className="flex items-center gap-1 rounded-xl border bg-card px-2 py-1.5 shadow-panel">
-              <button
-                type="button"
-                onClick={() => setSideOpen(false)}
-                aria-label="Hide chapters"
-                title="Hide chapters"
-                className="shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:text-foreground"
-              >
-                <PanelLeftClose className="size-4" aria-hidden="true" />
-              </button>
               <span className="eyebrow min-w-0 flex-1 truncate px-1">
                 Chapters ({project.chapters.length})
               </span>
@@ -149,22 +136,6 @@ export default function EditorPage() {
             <ChapterList />
           </div>
         </aside>
-
-        {/* Slim rail while the desktop sidebar is hidden. */}
-        {!sideOpen && (
-          <button
-            type="button"
-            onClick={() => setSideOpen(true)}
-            aria-label="Show chapters"
-            title="Show chapters"
-            className="sticky top-20 hidden shrink-0 flex-col items-center gap-2 rounded-xl border bg-card px-2 py-3 shadow-panel transition-colors hover:text-foreground lg:flex"
-          >
-            <PanelLeftOpen className="size-4" aria-hidden="true" />
-            <span className="text-xs text-muted-foreground [writing-mode:vertical-rl]">
-              Chapters ({project.chapters.length})
-            </span>
-          </button>
-        )}
 
         {/* Mobile drawer. */}
         <div
@@ -202,16 +173,8 @@ export default function EditorPage() {
           </aside>
         </div>
 
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 lg:pr-2">
           <CoverUpload />
-          <button
-            type="button"
-            onClick={() => setSideOpen(true)}
-            className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border bg-card px-4 py-2.5 text-sm shadow-panel transition-colors hover:border-brass/40 lg:hidden"
-          >
-            <List className="size-4 text-brass" aria-hidden="true" />
-            Chapters ({project.chapters.length})
-          </button>
           <div className="mt-4">
           {activeChapter ? (
             <ChapterEditor key={activeChapter.id} chapter={activeChapter} />
@@ -223,13 +186,77 @@ export default function EditorPage() {
               </Button>
             </div>
           )}
-          {showAI && (
-            <div className="mt-6" ref={aiRef}>
-              <AIPanel />
-            </div>
-          )}
           </div>
         </div>
+
+        {/* Desktop AI dock: squeezes the editor left with a smooth width
+            transition instead of overlaying it. Mobile keeps the overlay
+            below. */}
+        <aside
+          className={`hidden shrink-0 overflow-hidden transition-all duration-200 lg:block ${
+            aiOpen ? "w-[400px] opacity-100" : "w-0 opacity-0"
+          }`}
+          aria-hidden={!aiOpen}
+        >
+          <div className="w-[400px] overflow-hidden rounded-xl border bg-card shadow-panel">
+            <div className="flex items-center gap-2 border-b px-4 py-3">
+              <Sparkles className="size-4 shrink-0 text-brass" aria-hidden="true" />
+              <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                AI Tools
+                {activeChapter && (
+                  <span className="text-muted-foreground"> · {activeChapter.title}</span>
+                )}
+              </span>
+              <button
+                type="button"
+                onClick={() => setAiOpen(false)}
+                aria-label="Close AI Tools"
+                className="shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <X className="size-5" aria-hidden="true" />
+              </button>
+            </div>
+            <div className="max-h-[calc(100vh-12rem)] overflow-y-auto p-4">
+              <AIPanel />
+            </div>
+          </div>
+        </aside>
+      </div>
+      {/* AI Tools overlay (mobile only). */}
+      <div
+        className={`fixed inset-0 z-50 ${aiOpen ? "" : "pointer-events-none"}`}
+        aria-hidden={!aiOpen}
+      >
+        <div
+          onClick={() => setAiOpen(false)}
+          className={`absolute inset-0 bg-black/40 transition-opacity duration-200 lg:hidden ${aiOpen ? "opacity-100" : "opacity-0"}`}
+        />
+        <aside
+          className={`absolute inset-y-0 right-0 flex w-full max-w-md flex-col border-l bg-background shadow-panel transition-transform duration-200 ${aiOpen ? "translate-x-0" : "translate-x-full"}`}
+          role="dialog"
+          aria-label="AI Tools"
+        >
+          <div className="flex items-center gap-2 border-b px-4 py-3">
+            <Sparkles className="size-4 shrink-0 text-brass" aria-hidden="true" />
+            <span className="min-w-0 flex-1 truncate text-sm font-medium">
+              AI Tools
+              {activeChapter && (
+                <span className="text-muted-foreground"> · {activeChapter.title}</span>
+              )}
+            </span>
+            <button
+              type="button"
+              onClick={() => setAiOpen(false)}
+              aria-label="Close AI Tools"
+              className="shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <X className="size-5" aria-hidden="true" />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-4">
+            <AIPanel />
+          </div>
+        </aside>
       </div>
       <BackToTop />
     </div>

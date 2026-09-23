@@ -46,7 +46,8 @@ const BLOCK_FORMATS = [
 ];
 
 export function ChapterEditor({ chapter }: { chapter: Chapter }) {
-  const { project, updateChapter } = useProjectStore();
+  const { project, updateChapter, checkpointChapter, undoChapter, redoChapter } =
+    useProjectStore();
   const editorRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState(chapter.title);
@@ -57,15 +58,23 @@ export function ChapterEditor({ chapter }: { chapter: Chapter }) {
   const [linkUrl, setLinkUrl] = useState("");
   const savedRange = useRef<Range | null>(null);
 
-  // InnerHTML is set once on mount. The parent remounts this component with
-  // a fresh `key` when the active chapter changes, so local state (title,
-  // level, content) resets naturally without state-in-effect juggling.
+  // InnerHTML is set once on mount, then re-synced only when the store
+  // content diverges (undo/redo, AI apply) — never while typing, where the
+  // store already mirrors the DOM. The parent remounts this component with
+  // a fresh `key` when the active chapter changes.
   useEffect(() => {
     if (editorRef.current) {
       editorRef.current.innerHTML = chapter.content;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    const el = editorRef.current;
+    if (el && el.innerHTML !== chapter.content) {
+      el.innerHTML = chapter.content;
+    }
+  }, [chapter.content]);
 
   const handleContentChange = useCallback(() => {
     if (editorRef.current) {
@@ -84,12 +93,14 @@ export function ChapterEditor({ chapter }: { chapter: Chapter }) {
   };
 
   const execCommand = (command: string) => {
+    checkpointChapter(chapter.id);
     editorRef.current?.focus();
     document.execCommand(command, false);
     handleContentChange();
   };
 
   const applyBlockFormat = (tag: string) => {
+    checkpointChapter(chapter.id);
     editorRef.current?.focus();
     document.execCommand("formatBlock", false, tag);
     handleContentChange();
@@ -105,6 +116,7 @@ export function ChapterEditor({ chapter }: { chapter: Chapter }) {
 
   const applyLink = () => {
     const url = linkUrl.trim();
+    checkpointChapter(chapter.id);
     editorRef.current?.focus();
     const sel = window.getSelection();
     if (savedRange.current && sel) {
@@ -125,6 +137,7 @@ export function ChapterEditor({ chapter }: { chapter: Chapter }) {
     }
     const reader = new FileReader();
     reader.onload = () => {
+      checkpointChapter(chapter.id);
       editorRef.current?.focus();
       document.execCommand("insertImage", false, reader.result as string);
       handleContentChange();
@@ -141,6 +154,7 @@ export function ChapterEditor({ chapter }: { chapter: Chapter }) {
   const insertChapterLink = (targetId: string) => {
     const target = project?.chapters.find((c) => c.id === targetId);
     if (!target || !editorRef.current) return;
+    checkpointChapter(chapter.id);
     editorRef.current.focus();
     const sel = window.getSelection();
     const text =
@@ -157,6 +171,7 @@ export function ChapterEditor({ chapter }: { chapter: Chapter }) {
   const insertIndex = () => {
     const chapters = [...(project?.chapters ?? [])].sort((a, b) => a.order - b.order);
     if (chapters.length === 0 || !editorRef.current) return;
+    checkpointChapter(chapter.id);
     editorRef.current.focus();
     const items = chapters
       .map(
@@ -200,7 +215,7 @@ export function ChapterEditor({ chapter }: { chapter: Chapter }) {
         <button
           type="button"
           title="Undo"
-          onClick={() => execCommand("undo")}
+          onClick={() => undoChapter(chapter.id)}
           className="h-8 w-8 rounded text-sm hover:bg-muted grid place-items-center"
         >
           <Undo2 className="size-4" aria-hidden="true" />
@@ -208,7 +223,7 @@ export function ChapterEditor({ chapter }: { chapter: Chapter }) {
         <button
           type="button"
           title="Redo"
-          onClick={() => execCommand("redo")}
+          onClick={() => redoChapter(chapter.id)}
           className="h-8 w-8 rounded text-sm hover:bg-muted grid place-items-center"
         >
           <Redo2 className="size-4" aria-hidden="true" />

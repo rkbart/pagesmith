@@ -21,10 +21,15 @@ function buildToc(chapters: Chapter[]): TOCEntry[] {
   }));
 }
 
+/** Undo/redo depth per chapter — full HTML snapshots, so keep it tight. */
+const HISTORY_LIMIT = 25;
+
 interface ProjectState {
   project: Project | null;
   projects: Project[];
   collections: Collection[];
+  /** Per-chapter undo/redo stacks (content snapshots). In-memory only. */
+  history: Record<string, { undo: string[]; redo: string[] }>;
   activeChapterId: string | null;
   isDirty: boolean;
   /** True once the shelf has been restored from IndexedDB (see below). */
@@ -55,6 +60,18 @@ interface ProjectState {
   deleteCollection: (id: string) => void;
   /** File a book into a collection, or pass null to unsort it. */
   assignProject: (projectId: string, collectionId: string | null) => void;
+  /**
+   * Undo history for chapter content. In-memory only (never persisted —
+   * full copies would bloat IndexedDB) and capped per chapter. Typing does
+   * NOT checkpoint (a stack of per-keystroke states would make undo step
+   * one character at a time); discrete ops do: AI applies, toolbar
+   * commands, image/link/index inserts.
+   */
+  checkpointChapter: (id: string) => void;
+  /** Restore the previous checkpoint. Returns false when there's nothing. */
+  undoChapter: (id: string) => boolean;
+  /** Re-apply an undone checkpoint. Returns false when there's nothing. */
+  redoChapter: (id: string) => boolean;
 }
 
 export const useProjectStore = create<ProjectState>()(
@@ -62,6 +79,9 @@ export const useProjectStore = create<ProjectState>()(
       project: null,
       projects: [],
       collections: [],
+      // Undo stacks live outside the persisted snapshot (see `snapshot`
+      // below) — full chapter copies would bloat IndexedDB.
+      history: {},
       activeChapterId: null,
       isDirty: false,
       hydrated: false,
@@ -229,11 +249,15 @@ export const useProjectStore = create<ProjectState>()(
             toc: buildToc(chapters),
             updatedAt: Date.now(),
           };
+          // Drop its undo trail with it.
+          const history = { ...state.history };
+          delete history[id];
           return {
             project,
             projects: state.projects.map((p) => (p.id === project.id ? project : p)),
             activeChapterId:
               state.activeChapterId === id ? chapters[0]?.id ?? null : state.activeChapterId,
+            history,
             isDirty: true,
           };
         });
@@ -357,8 +381,7 @@ export const useProjectStore = create<ProjectState>()(
         }));
       },
 
-      assignProject: (projectId, collectionId) => {
-        if (collectionId && !get().collections.some((c) => c.id === collectionId)) {
+      assignProject: (projectId, collectionId) => {        if (collectionId && !get().collections.some((c) => c.id === collectionId)) {
           return;
         }
         set((state) => ({
@@ -377,6 +400,109 @@ export const useProjectStore = create<ProjectState>()(
               : state.project,
           isDirty: true,
         }));
+      },
+
+      checkpointChapter: (id) => {
+        const chapter = get().project?.chapters.find((c) => c.id === id);
+        if (!chapter) return;
+        set((state) => {
+          const entry = state.history[id] ?? { undo: [], redo: [] };
+          const top = entry.undo[entry.undo.length - 1];
+          // Skip no-op checkpoints (e.g. toolbar clicks that changed nothing).
+          if (top === chapter.content) return state;
+          return {
+            history: {
+              ...state.history,
+              [id]: {
+                undo: [...entry.undo, chapter.content].slice(-HISTORY_LIMIT),
+                // A new edit invalidates the redo trail.
+                redo: [],
+              },
+            },
+          };
+        });
+      },
+
+      undoChapter: (id) => {
+        const state = get();
+        const entry = state.history[id];
+        const prev = entry?.undo[entry.undo.length - 1];
+        const chapter = state.project?.chapters.find((c) => c.id === id);
+        if (prev === undefined || !chapter) return false;
+        const next = chapter.content;
+        set((s) => ({
+          project: s.project
+            ? {
+                ...s.project,
+                chapters: s.project.chapters.map((c) =>
+                  c.id === id ? { ...c, content: prev } : c
+                ),
+                updatedAt: Date.now(),
+              }
+            : s.project,
+          projects: s.projects.map((p) =>
+            p.id === state.project?.id
+              ? {
+                  ...p,
+                  chapters: p.chapters.map((c) =>
+                    c.id === id ? { ...c, content: prev } : c
+                  ),
+                  updatedAt: Date.now(),
+                }
+              : p
+          ),
+          history: {
+            ...s.history,
+            [id]: {
+              undo: entry.undo.slice(0, -1),
+              redo: [...entry.redo, next].slice(-HISTORY_LIMIT),
+            },
+          },
+          isDirty: true,
+        }));
+        get().shelveProject();
+        return true;
+      },
+
+      redoChapter: (id) => {
+        const state = get();
+        const entry = state.history[id];
+        const next = entry?.redo[entry.redo.length - 1];
+        const chapter = state.project?.chapters.find((c) => c.id === id);
+        if (next === undefined || !chapter) return false;
+        const prev = chapter.content;
+        set((s) => ({
+          project: s.project
+            ? {
+                ...s.project,
+                chapters: s.project.chapters.map((c) =>
+                  c.id === id ? { ...c, content: next } : c
+                ),
+                updatedAt: Date.now(),
+              }
+            : s.project,
+          projects: s.projects.map((p) =>
+            p.id === state.project?.id
+              ? {
+                  ...p,
+                  chapters: p.chapters.map((c) =>
+                    c.id === id ? { ...c, content: next } : c
+                  ),
+                  updatedAt: Date.now(),
+                }
+              : p
+          ),
+          history: {
+            ...s.history,
+            [id]: {
+              undo: [...entry.undo, prev].slice(-HISTORY_LIMIT),
+              redo: entry.redo.slice(0, -1),
+            },
+          },
+          isDirty: true,
+        }));
+        get().shelveProject();
+        return true;
       },
     })
 );

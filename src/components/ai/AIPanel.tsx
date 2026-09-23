@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Languages, Wand2, BarChart3, Copy, Check, Sparkles, Lock, Globe } from "lucide-react";
+import { Loader2, Languages, Wand2, BarChart3, Copy, Check, Sparkles, Lock, Globe, Undo2 } from "lucide-react";
 
 type AITool = "translate" | "edit" | "readability";
 
@@ -43,12 +43,14 @@ const EDIT_STYLES = [
 ];
 
 export function AIPanel() {
-  const { project, activeChapterId, updateChapter } = useProjectStore();
+  const { project, activeChapterId, updateChapter, checkpointChapter, undoChapter } =
+    useProjectStore();
   const [tool, setTool] = useState<AITool>("readability");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [applied, setApplied] = useState(false);
 
   const [targetLang, setTargetLang] = useState("es");
   const [editStyle, setEditStyle] = useState("grammar");
@@ -60,6 +62,7 @@ export function AIPanel() {
     setLoading(true);
     setError(null);
     setResult(null);
+    setApplied(false);
 
     const config = loadAIConfig();
     const plainText = activeChapter.content.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
@@ -102,8 +105,15 @@ export function AIPanel() {
   function applyResult() {
     if (!activeChapter || !result) return;
     if (tool === "readability") return;
+    checkpointChapter(activeChapter.id);
     updateChapter(activeChapter.id, { content: `<p>${result.replace(/\n/g, "</p>\n<p>")}</p>` });
     setResult(null);
+    setApplied(true);
+  }
+
+  function revertApply() {
+    if (!activeChapter) return;
+    if (undoChapter(activeChapter.id)) setApplied(false);
   }
 
   function copyResult() {
@@ -155,6 +165,7 @@ export function AIPanel() {
                   setTool(value);
                   setResult(null);
                   setError(null);
+                  setApplied(false);
                 }}
               >
                 <Icon className="h-4 w-4 mr-1" />
@@ -226,6 +237,17 @@ export function AIPanel() {
           {error && (
             <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
               {error}
+            </div>
+          )}
+
+          {/* Revert an apply the user changed their mind about */}
+          {applied && !result && (
+            <div className="flex items-center justify-between gap-2 rounded-lg border p-3 text-sm">
+              <span className="text-muted-foreground">Applied to the chapter.</span>
+              <Button variant="outline" size="sm" onClick={revertApply}>
+                <Undo2 className="h-4 w-4 mr-1" />
+                Revert
+              </Button>
             </div>
           )}
 

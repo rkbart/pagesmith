@@ -41,7 +41,7 @@ On `/editor`:
 
 ## 3. AI tools
 
-1. Toggle **AI Tools** in the top bar.
+1. Open **AI Tools** from the top bar — a right slide-over, so the chapter stays visible while results land.
 2. Choose a tool:
    - **Readability** — Flesch-Kincaid, reading ease, word/sentence stats (works offline).
     - **Translate** — needs a provider in Settings (Ollama local by default).

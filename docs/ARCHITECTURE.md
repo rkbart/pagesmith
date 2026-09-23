@@ -76,7 +76,7 @@ Settings (src/app/settings/page.tsx)
 - `/convert` import desk (single or multi-file → merged book)
 - `/convert/[format]` dynamic parse page (pdf, docx, markdown, html, txt, epub)
 - `/library` shelf of every book (cards/list toggle, search, pagination, open, read, delete); `/library?collection=<id>` drills into one collection (unknown ids fall back to the overview)
-- `/editor` multi-chapter editor
+- `/editor` multi-chapter editor (chapters slide-over left, AI Tools slide-over right)
 - `/editor/metadata` book metadata (own route — autosaved, never lost on navigation)
 - `/read` reading room for the active (or most recent) book
 - `/check` EPUB validator

@@ -9,6 +9,7 @@ import {
   BookOpen,
   Download,
   Library,
+  List,
   Settings2,
   Sparkles,
   Loader2,
@@ -18,10 +19,16 @@ export function ExportBar({
   project,
   aiOpen = false,
   onToggleAI,
+  chaptersOpen = false,
+  onToggleChapters,
+  chaptersCount = 0,
 }: {
   project: { name: string; metadata: { title: string } };
   aiOpen?: boolean;
   onToggleAI: () => void;
+  chaptersOpen?: boolean;
+  onToggleChapters?: () => void;
+  chaptersCount?: number;
 }) {
   const { exportEpub, canExport } = useExport();
   const [exporting, setExporting] = useState(false);
@@ -58,6 +65,17 @@ export function ExportBar({
           </h1>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {onToggleChapters && (
+            <Button
+              variant={chaptersOpen ? "secondary" : "ghost"}
+              size="sm"
+              onClick={onToggleChapters}
+              aria-expanded={chaptersOpen}
+              className="lg:hidden"
+            >
+              <List className="h-4 w-4 mr-1" /> Chapters ({chaptersCount})
+            </Button>
+          )}
           <Link
             href="/editor/metadata"
             className={buttonVariants({ variant: "outline", size: "sm" })}
