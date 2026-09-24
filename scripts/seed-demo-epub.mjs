@@ -23,22 +23,13 @@ const CHAPTERS = [
   { level: 1, title: "Conclusion", content: "<h1>Conclusion</h1><p>We wrap up everything we've covered.</p>" },
 ];
 
-const STYLES = `<style>
-  body { font-family: Georgia, serif; max-width: 68ch; margin: 0 auto; padding: 2em; line-height: 1.75; }
-  h1 { font-size: 2em; margin-top: 2em; }
-  h2 { font-size: 1.5em; margin-top: 1.5em; }
-  h3 { font-size: 1.2em; margin-top: 1em; }
-  p { margin: 0.5em 0; }
-</style>`;
-
-async function generateChapterXhtml(title, content) {
+function generateChapterXhtml(title, content) {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml" epub:type="chapter">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 <head>
   <meta charset="utf-8"/>
   <title>${title}</title>
-  ${STYLES}
 </head>
 <body>
 ${content}
@@ -57,7 +48,7 @@ async function generateDemoEpub() {
     const fileId = `chap-${i + 1}`;
     const href = `OEBPS/chapter${i + 1}.xhtml`;
     chapterFiles.push({ id: fileId, href, title: ch.title });
-    zip.file(href, await generateChapterXhtml(ch.title, ch.content));
+    zip.file(href, generateChapterXhtml(ch.title, ch.content));
   }
 
   const manifestItems = chapterFiles.map(f =>
@@ -94,8 +85,6 @@ ${spineItems}
   const buffer = Buffer.from(await blob.arrayBuffer());
   writeFileSync("demo-book.epub", buffer);
   console.log("Generated demo-book.epub with 10 chapters at levels 1-3");
-  console.log("Level breakdown:");
-  CHAPTERS.forEach(ch => console.log(`  Level ${ch.level}: ${ch.title}`));
 }
 
 generateDemoEpub().catch(console.error);
