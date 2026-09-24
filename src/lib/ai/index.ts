@@ -253,7 +253,7 @@ async function callAnthropic(
   return data.content?.[0]?.text ?? "";
 }
 
-async function callAI(
+export async function callAI(
   config: AIConfig,
   systemPrompt: string,
   userPrompt: string

@@ -43,10 +43,14 @@ Legacy `{ openaiKey, anthropicKey, model }` payloads are adopted automatically. 
 | `detectChaptersAI` | JSON array split of long text |
 | `analyzeConsistency` | Cross-chapter plot/character/timeline check |
 | `calculateReadability` | Flesch-Kincaid grade + reading ease (offline) |
+| `lookupWord` | DictionaryAPI.dev word lookup |
+| `defineWithAI` | AI fallback definition for phrases or failed lookups |
 
 ## UI
 
-`AIPanel` (`src/components/ai/AIPanel.tsx`) — three tabs (Readability / Translate / Edit), run button, result textarea, Copy, Apply to Chapter. Provider badge reads live config.
+`AIPanel` (`src/components/ai/AIPanel.tsx`) — six tools (Readability / Translate / Edit / Summarize / Detect Chapters / Consistency), run button, result textarea, Copy, Apply to Chapter, Insert as New Chapter, recent results history. Provider badge reads live config.
+
+`DictionaryTooltip` (`src/components/ai/DictionaryTooltip.tsx`) — floating tooltip on word selection in both the reader and editor, powered by DictionaryAPI.dev with AI fallback for multi-word phrases.
 
 `/settings` — registry-driven: provider select (local/free badges), dynamic key/model/endpoint fields, per-provider hints, Ollama 3-step layman guide with copy buttons, Test connection with inline result.
 
