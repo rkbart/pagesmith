@@ -24,6 +24,20 @@ interface DictionaryAPIResponse {
 
 const CACHE_KEY = "pagesmith-dictionary-cache";
 
+let staticDictPromise: Promise<Record<string, DictionaryResult>> | null = null;
+
+function loadStaticDict(): Promise<Record<string, DictionaryResult>> {
+  if (staticDictPromise) return staticDictPromise;
+  staticDictPromise = (async () => {
+    try {
+      const res = await fetch("/dictionary/common.json");
+      if (res.ok) return await res.json();
+    } catch {}
+    return {};
+  })();
+  return staticDictPromise;
+}
+
 function loadCache(): Record<string, DictionaryResult> {
   if (typeof window === "undefined") return {};
   try {
@@ -45,11 +59,15 @@ export async function lookupWord(word: string): Promise<DictionaryResult | null>
   const cleaned = word.trim().toLowerCase().replace(/[^a-z]/g, "");
   if (!cleaned || cleaned.length < 2) return null;
 
-  // 1. Check localStorage cache (instant for repeated lookups)
+  // 1. Check static dictionary (bundled common words, instant)
+  const staticDict = await loadStaticDict();
+  if (staticDict[cleaned]) return staticDict[cleaned];
+
+  // 2. Check localStorage cache (instant for repeated lookups)
   const cache = loadCache();
   if (cache[cleaned]) return cache[cleaned];
 
-  // 2. Fall back to DictionaryAPI.dev
+  // 3. Fall back to DictionaryAPI.dev
   try {
     const res = await fetch(
       `https://api.dictionaryapi.dev/api/v2/entries/en/${cleaned}`
