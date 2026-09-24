@@ -15,7 +15,10 @@ export function FinalCta() {
           <Link href="/convert" className={buttonVariants({ variant: "brass", size: "lg" })}>
             Start binding <ArrowRight className="ml-2 h-4 w-4" />
           </Link>
-          <Link href="/editor" className={buttonVariants({ variant: "outline", size: "lg", className: "border-input" })}>
+          <Link
+            href="/editor"
+            className="inline-flex items-center justify-center rounded-lg border border-input bg-background px-6 py-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+          >
             Open the studio
           </Link>
         </div>

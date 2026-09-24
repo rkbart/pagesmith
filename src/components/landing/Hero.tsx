@@ -82,7 +82,7 @@ export function Hero() {
               </Link>
               <Link
                 href="/editor"
-                className={`${buttonVariants({ variant: "outline", size: "lg" })} w-full justify-center border-input sm:w-auto`}
+                className="inline-flex items-center justify-center rounded-lg border border-input bg-background px-6 py-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 w-full justify-center sm:w-auto"
               >
                 Open the studio
               </Link>
