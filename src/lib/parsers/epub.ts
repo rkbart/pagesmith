@@ -97,9 +97,9 @@ export async function parseEPUB(file: File): Promise<ParseResult> {
   const chapters: { id: string; title: string; content: string; order: number; level: number; source: string }[] = [];
   let order = 0;
   let maxChapterBytes = 0;
-  const push = (title: string, content: string, source: string) => {
+  const push = (title: string, content: string, source: string, level: number) => {
     if (!content.trim()) return;
-    chapters.push({ id: generateId(), title, content, order: order++, level: 1, source });
+    chapters.push({ id: generateId(), title, content, order: order++, level, source });
   };
 
   for (const item of spine) {
@@ -139,7 +139,7 @@ export async function parseEPUB(file: File): Promise<ParseResult> {
     let chapterBytes = 0;
     for (const part of parts) {
       chapterBytes += part.html.length;
-      push(part.title, part.html, item.href);
+      push(part.title, part.html, item.href, part.level);
     }
     maxChapterBytes = Math.max(maxChapterBytes, chapterBytes);
     if (perfEnabled()) {
@@ -538,9 +538,15 @@ async function readImageAsDataUrl(zip: JSZip, path: string): Promise<string | nu
  * imported book renders as a few giant chapters and the TOC is useless.
  * The preamble before the first heading stays attached to the first part.
  */
-function splitAtHeadings(doc: Document, fallbackTitle: string): { title: string; html: string }[] {
+function splitAtHeadings(doc: Document, fallbackTitle: string): { title: string; html: string; level: number }[] {
   const body = doc.querySelector("body") ?? doc.documentElement;
   const kids = Array.from(body.children);
+
+  const headingLevel = (el: Element): number => {
+    const tag = el.tagName.toLowerCase();
+    const match = tag.match(/^h(\d)$/);
+    return match ? parseInt(match[1]) : 0;
+  };
 
   const isSplitHeading = (el: Element): boolean => {
     const tag = el.tagName.toLowerCase();
@@ -548,17 +554,20 @@ function splitAtHeadings(doc: Document, fallbackTitle: string): { title: string;
   };
 
   if (!kids.some((el, i) => i > 0 && isSplitHeading(el))) {
-    const title = body.querySelector("h1, h2, h3")?.textContent?.trim() || fallbackTitle;
+    const h1 = body.querySelector("h1, h2, h3");
+    const title = h1?.textContent?.trim() || fallbackTitle;
+    const level = headingLevel(h1 ?? body);
     const html = body.innerHTML;
-    return html.trim() ? [{ title, html }] : [];
+    return html.trim() ? [{ title, html, level: level || 1 }] : [];
   }
 
-  const parts: { title: string; html: string }[] = [];
+  const parts: { title: string; html: string; level: number }[] = [];
   let current: Element[] = [];
   let currentTitle = fallbackTitle;
+  let currentLevel = 1;
   const flush = () => {
     const html = current.map((el) => el.outerHTML).join("\n");
-    if (html.trim()) parts.push({ title: currentTitle, html });
+    if (html.trim()) parts.push({ title: currentTitle, html, level: currentLevel });
     current = [];
   };
 
@@ -566,8 +575,10 @@ function splitAtHeadings(doc: Document, fallbackTitle: string): { title: string;
     if (isSplitHeading(el) && current.length > 0) {
       flush();
       currentTitle = el.textContent?.trim() ?? fallbackTitle;
+      currentLevel = headingLevel(el) || 1;
     } else if (isSplitHeading(el)) {
       currentTitle = el.textContent?.trim() ?? fallbackTitle;
+      currentLevel = headingLevel(el) || 1;
     }
     current.push(el);
   }
