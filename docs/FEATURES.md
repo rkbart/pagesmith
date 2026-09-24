@@ -76,9 +76,13 @@ Failed files are skipped and reported per row.
 - EPUB 3 generation (JSZip): mimetype, container.xml, content.opf, nav.xhtml, styles.css, chapter XHTML, optional cover
 - One-click Blob download
 
-## EPUB Checker
+## Proof Desk (`/check`)
 
-`/check` validates: mimetype, container.xml, OPF parse, required metadata, manifest/spine integrity, nav document, chapter XHTML parse, external links.
+`/check` validates every EPUB structure station — mimetype, container,
+metadata, manifest, spine, chapters — client-side. Filter findings by
+severity (all / errors / warnings / info), copy or download a plain-text
+proof report, and read the six-station explanation, proof marks guide,
+and FAQ. Files are never uploaded.
 
 ## AI (hybrid)
 
