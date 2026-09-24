@@ -298,7 +298,7 @@ export const useProjectStore = create<ProjectState>()(
                 Object.entries(metadata).filter(([, v]) => v !== undefined)
               )
             : undefined;
-          const project: Project = {
+          let project: Project = {
             ...state.project,
             metadata: { ...state.project.metadata, ...clean },
             cover: cover ?? state.project.cover,
@@ -306,6 +306,28 @@ export const useProjectStore = create<ProjectState>()(
             toc: buildToc(chapters),
             updatedAt: Date.now(),
           };
+          // The parser's raw title must not resurrect a duplicate on the
+          // shelf: createProject deduped `name`, but the metadata merge can
+          // clobber the display title back to a taken one. Suffix on
+          // collision ("Book (1)", "Book (2)", …).
+          const taken: string[] = [];
+          for (const p of state.projects) {
+            if (p.id === project.id) continue;
+            taken.push(p.name);
+            if (p.metadata.title) taken.push(p.metadata.title);
+          }
+          const title = project.metadata.title.trim();
+          if (
+            title &&
+            taken.some((n) => n.trim().toLowerCase() === title.toLowerCase())
+          ) {
+            const unique = uniqueName(title, taken);
+            project = {
+              ...project,
+              name: unique,
+              metadata: { ...project.metadata, title: unique },
+            };
+          }
           return {
             project,
             projects: state.projects.map((p) => (p.id === project.id ? project : p)),

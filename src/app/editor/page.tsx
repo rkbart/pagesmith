@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useProjectStore } from "@/lib/store/project";
 import { useProjectHydrated } from "@/hooks/useHydrated";
 import { ChapterList } from "@/components/editor/ChapterList";
@@ -15,6 +15,18 @@ import { AIPanel } from "@/components/ai/AIPanel";
 import { buttonVariants } from "@/components/ui/button";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { buildEpub } from "@/lib/epub/generate";
+import { validateEpub } from "@/lib/epub/validate";
+import {
+  clearCachedProof,
+  clearProofForProject,
+  getCachedProof,
+  loadProofForProject,
+  originalFileIfUnedited,
+  saveProofForProject,
+  setCachedProof,
+} from "@/lib/epub/proof-cache";
+import type { ValidationIssue } from "@/types/epub";
 import {
   Plus,
   Library,
@@ -25,6 +37,8 @@ import {
   X,
   AlertTriangle,
   ArrowLeft,
+  ChevronDown,
+  RotateCw,
 } from "lucide-react";
 
 export default function EditorPage() {
@@ -64,14 +78,121 @@ export default function EditorPage() {
   // Metadata docks the same way.
   const [metaOpen, setMetaOpen] = useState(false);
 
-  // Proof errors from /check — shown as a dismissible banner.
+  // Proof findings — collapsible inline list so fixes happen here, no
+  // trip back to the Proof Desk needed.
+  const router = useRouter();
   const [proofDismissed, setProofDismissed] = useState(false);
+  const [proofExpanded, setProofExpanded] = useState(false);
+  const [rechecking, setRechecking] = useState(false);
+  const [recheckError, setRecheckError] = useState<string | null>(null);
+  const [liveIssues, setLiveIssues] = useState<ValidationIssue[] | null>(null);
+  // Bumped when findings change outside render (recheck) so the
+  // sessionStorage read below stays fresh.
+  const [proofVersion, setProofVersion] = useState(0);
   const proofRaw = searchParams.get("proof");
   const proofData = proofRaw ? (() => { try { return JSON.parse(proofRaw); } catch { return null; } })() : null;
 
+  // Findings sources, richest first: this session's in-page recheck, the
+  // in-memory handoff from the Proof Desk, then the per-book
+  // sessionStorage slot (survives refresh). All are matched to the book
+  // on the bench; anything else is ignored.
+  const severityRank = { error: 0, warning: 1, info: 2 } as const;
+  const cachedProof = getCachedProof();
+  const proofIssues = useMemo(() => {
+    if (liveIssues) return liveIssues;
+    if (cachedProof?.projectId && project && cachedProof.projectId === project.id) {
+      return [...cachedProof.result.issues].sort(
+        (a, b) => severityRank[a.severity] - severityRank[b.severity],
+      );
+    }
+    if (project) {
+      const stored = loadProofForProject(project.id);
+      if (stored) {
+        return [...stored.result.issues].sort(
+          (a, b) => severityRank[a.severity] - severityRank[b.severity],
+        );
+      }
+    }
+    return null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveIssues, cachedProof, project, proofVersion]);
+
+  const proofCounts = proofIssues
+    ? {
+        error: proofIssues.filter((i) => i.severity === "error").length,
+        warning: proofIssues.filter((i) => i.severity === "warning").length,
+        info: proofIssues.filter((i) => i.severity === "info").length,
+      }
+    : proofData;
+  const proofTotal =
+    (proofCounts?.error ?? 0) + (proofCounts?.warning ?? 0) + (proofCounts?.info ?? 0);
+  // A recheck that comes back clean still deserves its moment.
+  const recheckedClean = liveIssues !== null && liveIssues.length === 0;
+  const showProof = !proofDismissed && (proofTotal > 0 || recheckedClean);
+
   useEffect(() => {
     setProofDismissed(false);
-  }, [proofData]);
+    setProofExpanded(false);
+    setLiveIssues(null);
+    setRecheckError(null);
+  }, [proofRaw, project?.id]);
+
+  // Re-proof the open book right here in the background. While the book
+  // is unedited since the Proof Desk shelved it, the original dropped
+  // bytes are re-validated so the proof reproduces; once edited, the
+  // current state is built and proofed instead. No navigation, so this
+  // also covers books that never passed through the Proof Desk.
+  const runRecheck = useCallback(async () => {
+    const current = useProjectStore.getState().project;
+    if (!current || rechecking) return;
+    setRechecking(true);
+    setRecheckError(null);
+    try {
+      const original = originalFileIfUnedited(current.id, current.updatedAt);
+      let file: File;
+      if (original) {
+        file = original;
+      } else {
+        const { blob, filename } = await buildEpub(current);
+        file = new File([blob], filename, { type: "application/epub+zip" });
+      }
+      const validation = await validateEpub(file);
+      const sorted = [...validation.issues].sort(
+        (a, b) => severityRank[a.severity] - severityRank[b.severity]
+      );
+      setLiveIssues(sorted);
+      setCachedProof({
+        result: validation,
+        fileName: file.name,
+        projectId: current.id,
+        timestamp: Date.now(),
+        originalFile: file,
+      });
+      saveProofForProject(current.id, validation, file.name);
+      setProofVersion((v) => v + 1);
+      setProofDismissed(false);
+      setProofExpanded(sorted.length > 0);
+    } catch (err) {
+      setRecheckError(err instanceof Error ? err.message : "Re-check failed");
+    } finally {
+      setRechecking(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rechecking]);
+
+  // Dismiss clears every copy (live, in-memory, per-book slot) and drops
+  // the ?proof= param, so a refresh can't resurrect the banner.
+  const dismissProof = useCallback(() => {
+    const current = useProjectStore.getState().project;
+    if (current) {
+      clearProofForProject(current.id);
+      if (getCachedProof()?.projectId === current.id) clearCachedProof();
+    }
+    setLiveIssues(null);
+    setProofDismissed(true);
+    setProofExpanded(false);
+    router.replace("/editor");
+  }, [router]);
 
   useEffect(() => {
     if (!aiOpen && !metaOpen) return;
@@ -132,38 +253,101 @@ export default function EditorPage() {
 
   return (
       <div className="container px-4 sm:px-6 lg:px-8 py-6">
-        {proofData && !proofDismissed && (
+        {showProof && (
           <Card className="mb-4 border-amber-500/30 bg-amber-500/5 p-4 sm:p-5">
             <div className="flex items-start gap-3">
               <AlertTriangle className="mt-0.5 size-5 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
-              <div className="flex-1">
-                <p className="font-heading text-sm">
-                  Your last proof found {proofData.errors} error{proofData.errors !== 1 ? "s" : ""}
-                  {proofData.warnings > 0 ? ` and ${proofData.warnings} warning${proofData.warnings !== 1 ? "s" : ""}` : ""}
-                  {proofData.info > 0 ? ` and ${proofData.info} info` : ""}.
-                </p>
-                <p className="body-sm mt-1 text-muted-foreground">
-                  Head to the Proof Desk to review and fix them before
-                  exporting.
-                </p>
-              </div>
-              <div className="flex shrink-0 gap-2">
-                <Link
-                  href="/check"
-                  className="inline-flex items-center rounded-md bg-brass-soft px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-brass/90"
-                >
-                  View proof
-                </Link>
+              <p className="font-heading min-w-0 flex-1 text-sm">
+                {recheckedClean
+                  ? "Re-check found no issues — this book is ready to ship."
+                  : `The Proof Desk found ${proofCounts.error} error${proofCounts.error !== 1 ? "s" : ""}${
+                      proofCounts.warning > 0 ? ` and ${proofCounts.warning} warning${proofCounts.warning !== 1 ? "s" : ""}` : ""
+                    }${
+                      proofCounts.info > 0 ? ` and ${proofCounts.info} info` : ""
+                    } in this book.`}
+              </p>
+              <div className="flex shrink-0 items-center gap-1">
+                {proofIssues && proofIssues.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setProofExpanded((v) => !v)}
+                    aria-expanded={proofExpanded}
+                    aria-label={proofExpanded ? "Hide findings" : "Show findings"}
+                    title={proofExpanded ? "Hide findings" : "Show findings"}
+                    className="rounded-md p-1.5 text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    <ChevronDown
+                      className={`size-4 transition-transform ${proofExpanded ? "rotate-180" : ""}`}
+                      aria-hidden="true"
+                    />
+                  </button>
+                )}
                 <button
                   type="button"
-                  onClick={() => setProofDismissed(true)}
-                  className="rounded-md p-1 text-muted-foreground transition-colors hover:text-foreground"
-                  aria-label="Dismiss"
+                  onClick={() => void runRecheck()}
+                  disabled={rechecking}
+                  aria-label="Re-check this book"
+                  title="Re-check this book"
+                  className="rounded-md p-1.5 text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
                 >
-                  <X className="size-4" />
+                  <RotateCw
+                    className={`size-4 ${rechecking ? "animate-spin" : ""}`}
+                    aria-hidden="true"
+                  />
+                </button>
+                <button
+                  type="button"
+                  onClick={dismissProof}
+                  aria-label="Dismiss"
+                  className="rounded-md p-1.5 text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  <X className="size-4" aria-hidden="true" />
                 </button>
               </div>
             </div>
+            {recheckError && (
+              <p className="mt-2 text-xs text-destructive">{recheckError}</p>
+            )}
+            {proofExpanded && proofIssues && proofIssues.length > 0 && (
+              <ul className="mt-3 space-y-2">
+                {proofIssues.map((issue, i) => (
+                  <li
+                    key={i}
+                    className={`rounded-lg border p-2.5 text-sm ${
+                      issue.severity === "error"
+                        ? "border-destructive/30 bg-destructive/10 text-destructive"
+                        : issue.severity === "warning"
+                          ? "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                          : "border-border bg-secondary/60 text-muted-foreground"
+                    }`}
+                  >
+                    <div className="flex items-start gap-2">
+                      <span className="mt-0.5 w-16 shrink-0 text-xs font-semibold capitalize">
+                        {issue.severity}
+                      </span>
+                      <span>
+                        {issue.message}
+                        {issue.file && (
+                          <span className="code block opacity-70">{issue.file}</span>
+                        )}
+                      </span>
+                    </div>
+                    {issue.fix && (
+                      <p className="mt-1.5 text-xs opacity-90">
+                        <span className="font-semibold">How to fix: </span>
+                        {issue.fix}
+                      </p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {!proofIssues && (
+              <p className="body-sm mt-2 text-muted-foreground">
+                The detailed findings didn&apos;t carry over (the page was
+                reloaded). Hit re-check above to run the proof again right here.
+              </p>
+            )}
           </Card>
         )}
         <ExportBar

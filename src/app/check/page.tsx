@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -25,46 +25,30 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { validateEpub } from "@/lib/epub/validate";
 import type { ValidationResult } from "@/types/epub";
+import {
+  clearCachedProof,
+  clearProofForProject,
+  getCachedProof,
+  saveProofForProject,
+  setCachedProof,
+  takePendingCheckFile,
+} from "@/lib/epub/proof-cache";
+import { parseFile } from "@/lib/parsers";
+import { useProjectStore } from "@/lib/store/project";
 import { FileDropZone } from "@/components/converter/FileDropZone";
 
-const PROOF_KEY = "pagesmith-proof-result";
-const PROOF_FILE_KEY = "pagesmith-proof-filename";
-const PROOF_TIME_KEY = "pagesmith-proof-time";
+// Legacy sessionStorage keys from an earlier persistence attempt. A proof
+// restored after a refresh is unverifiable (the on-disk file may be gone),
+// so proofs now live in memory only. Clear any leftovers once per mount.
+const LEGACY_PROOF_KEYS = [
+  "pagesmith-proof-result",
+  "pagesmith-proof-filename",
+  "pagesmith-proof-time",
+];
 
-function saveProof(result: ValidationResult, fileName: string) {
+function clearLegacyProof() {
   try {
-    sessionStorage.setItem(PROOF_KEY, JSON.stringify(result));
-    sessionStorage.setItem(PROOF_FILE_KEY, fileName);
-    sessionStorage.setItem(PROOF_TIME_KEY, Date.now().toString());
-  } catch {
-    /* storage full or unavailable */
-  }
-}
-
-function loadProof(): {
-  result: ValidationResult | null;
-  fileName: string;
-  timestamp: number | null;
-} {
-  try {
-    const raw = sessionStorage.getItem(PROOF_KEY);
-    const name = sessionStorage.getItem(PROOF_FILE_KEY) ?? "";
-    const time = sessionStorage.getItem(PROOF_TIME_KEY);
-    return {
-      result: raw ? JSON.parse(raw) : null,
-      fileName: name,
-      timestamp: time ? parseInt(time, 10) : null,
-    };
-  } catch {
-    return { result: null, fileName: "", timestamp: null };
-  }
-}
-
-function clearProof() {
-  try {
-    sessionStorage.removeItem(PROOF_KEY);
-    sessionStorage.removeItem(PROOF_FILE_KEY);
-    sessionStorage.removeItem(PROOF_TIME_KEY);
+    for (const key of LEGACY_PROOF_KEYS) sessionStorage.removeItem(key);
   } catch {
     /* unavailable */
   }
@@ -157,36 +141,104 @@ export default function CheckPage() {
   const [filter, setFilter] = useState<Filter>("all");
   const [copied, setCopied] = useState(false);
   const [proofTimestamp, setProofTimestamp] = useState<number | null>(null);
+  const [importedProjectId, setImportedProjectId] = useState<string | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
+  // True only when the visible proof was restored from the in-memory cache
+  // (back-navigation). A freshly dropped file is never "stale".
+  const [proofRestored, setProofRestored] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Restore proof from sessionStorage on mount (survives back-navigation).
+  // Restore the in-memory proof on mount (survives back-navigation within
+  // the session; a full refresh starts with an empty module, so the proof
+  // is naturally cleared). Also sweep legacy sessionStorage leftovers.
   useEffect(() => {
-    const saved = loadProof();
-    if (saved.result) {
+    clearLegacyProof();
+    const saved = getCachedProof();
+    if (saved) {
       setResult(saved.result);
       setFileName(saved.fileName);
       setProofTimestamp(saved.timestamp);
+      setImportedProjectId(saved.projectId);
+      setProofRestored(true);
     }
   }, []);
 
-  const handleFile = useCallback(async (file: File) => {
+  const handleFile = useCallback(async (file: File, opts?: { sourceProjectId?: string | null }) => {
     setParsing(true);
     setError(null);
+    setImportError(null);
     setResult(null);
     setFilter("all");
     setFileName(file.name);
     setProofTimestamp(null);
-    clearProof();
+    setImportedProjectId(null);
+    setProofRestored(false);
+    clearCachedProof();
 
     try {
       const validation = await validateEpub(file);
       setResult(validation);
-      saveProof(validation, file.name);
+
+      // Shelve a copy in the library so "Open Studio" opens this exact
+      // book — unless this came from the Studio's Proof button, whose
+      // book is already shelved and autosaved (re-shelving would just
+      // stack up duplicates). A broken archive can still proof but may
+      // have nothing readable to shelve — the proof stays regardless.
+      let projectId: string | null = null;
+      const store = useProjectStore.getState();
+      if (
+        opts?.sourceProjectId &&
+        store.projects.some((p) => p.id === opts.sourceProjectId)
+      ) {
+        projectId = opts.sourceProjectId;
+      } else {
+        try {
+          const parsed = await parseFile(file, "epub");
+          if (parsed.chapters.length > 0) {
+            const metadata = Object.fromEntries(
+              Object.entries(parsed.metadata).filter(
+                ([, value]) => value !== "" && value != null
+              )
+            );
+            const fallback = file.name.replace(/\.epub$/i, "").trim();
+            const name = (parsed.metadata.title || fallback || "Imported Book").trim();
+            store.createProject(name);
+            store.importChapters(parsed.chapters, metadata, parsed.cover);
+            projectId = useProjectStore.getState().project?.id ?? null;
+          } else {
+            setImportError(
+              "That EPUB has no readable chapters to shelve — the proof above still stands, but nothing was saved to the library."
+            );
+          }
+        } catch (err) {
+          setImportError(
+            `Could not shelve this EPUB in the library (${
+              err instanceof Error ? err.message : "unknown error"
+            }). The proof above still stands.`
+          );
+        }
+      }
+
+      const timestamp = Date.now();
+      setProofTimestamp(timestamp);
+      setImportedProjectId(projectId);
+      setCachedProof({ result: validation, fileName: file.name, projectId, timestamp, originalFile: file });
+      // Persist per book so the Studio banner survives a refresh. The
+      // Proof Desk itself never reads this back — a refresh starts empty.
+      if (projectId) saveProofForProject(projectId, validation, file.name);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to validate EPUB");
     } finally {
       setParsing(false);
     }
   }, []);
+
+  // Handoff from the Studio's "send to Proof Desk": EPUB bytes plus the
+  // shelved project they belong to, proofed like a fresh drop.
+  useEffect(() => {
+    const pending = takePendingCheckFile();
+    if (pending) void handleFile(pending.file, { sourceProjectId: pending.sourceProjectId });
+  }, [handleFile]);
 
   const counts = useMemo(() => {
     const issues = result?.issues ?? [];
@@ -214,10 +266,10 @@ export default function CheckPage() {
       "",
       ...[...result.issues]
         .sort((a, b) => severityRank[a.severity] - severityRank[b.severity])
-        .map(
-          (i) =>
-            `[${i.severity}] ${i.message}${i.file ? ` (${i.file})` : ""}`,
-        ),
+        .flatMap((i) => {
+          const head = `[${i.severity}] ${i.message}${i.file ? ` (${i.file})` : ""}`;
+          return i.fix ? [head, `  Fix: ${i.fix}`] : [head];
+        }),
     ];
     return lines.join("\n");
   }, [result, fileName, counts]);
@@ -244,6 +296,29 @@ export default function CheckPage() {
 
   const goToEditor = useCallback(() => {
     if (!result) return;
+    // Open the exact copy shelved from this drop. If it was deleted from
+    // the library meanwhile, warn and clear instead of opening some other
+    // book.
+    if (importedProjectId) {
+      const store = useProjectStore.getState();
+      const stillThere = store.projects.some((p) => p.id === importedProjectId);
+      if (!stillThere) {
+        setResult(null);
+        setFileName("");
+        setError(
+          "The shelved copy of this book is gone from the library, so the proof was cleared. Drop the file again to re-proof it."
+        );
+        setFilter("all");
+        setProofTimestamp(null);
+        setImportedProjectId(null);
+        setImportError(null);
+        setProofRestored(false);
+        clearCachedProof();
+        clearProofForProject(importedProjectId);
+        return;
+      }
+      store.loadProject(importedProjectId);
+    }
     // Encode issues summary so the editor can point to them
     const summary = JSON.stringify({
       errors: counts.error,
@@ -251,16 +326,20 @@ export default function CheckPage() {
       info: counts.info,
     });
     router.push(`/editor?proof=${encodeURIComponent(summary)}`);
-  }, [result, counts, router]);
+  }, [result, counts, importedProjectId, router]);
 
   const clearProofAndReset = useCallback(() => {
+    if (importedProjectId) clearProofForProject(importedProjectId);
     setResult(null);
     setFileName("");
     setError(null);
+    setImportError(null);
     setFilter("all");
     setProofTimestamp(null);
-    clearProof();
-  }, []);
+    setImportedProjectId(null);
+    setProofRestored(false);
+    clearCachedProof();
+  }, [importedProjectId]);
 
   const timeAgo = useMemo(() => {
     if (!proofTimestamp) return null;
@@ -292,6 +371,19 @@ export default function CheckPage() {
       </header>
 
       <section aria-live="polite" className="mb-16">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".epub,application/epub+zip"
+          className="hidden"
+          aria-hidden="true"
+          tabIndex={-1}
+          onChange={(e) => {
+            const picked = e.target.files?.[0];
+            if (picked) void handleFile(picked);
+            e.target.value = "";
+          }}
+        />
         {parsing && (
           <Card className="items-center p-10 text-center">
             <Loader2 className="size-10 animate-spin text-brass" aria-hidden="true" />
@@ -319,7 +411,7 @@ export default function CheckPage() {
 
         {result && !parsing && (
           <div className="space-y-6">
-            {timeAgo && (
+            {proofRestored && timeAgo && (
               <Card className="mb-4 border-amber-500/30 bg-amber-500/5 p-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
@@ -331,10 +423,24 @@ export default function CheckPage() {
                       be stale.
                     </p>
                   </div>
-                  <Button variant="destructive" size="sm" onClick={clearProofAndReset}>
-                    Clear proof
-                  </Button>
+                  <div className="flex shrink-0 gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      Re-check file
+                    </Button>
+                    <Button variant="destructive" size="sm" onClick={clearProofAndReset}>
+                      Clear proof
+                    </Button>
+                  </div>
                 </div>
+              </Card>
+            )}
+            {importError && (
+              <Card className="mb-4 border-amber-500/30 bg-amber-500/5 p-4">
+                <p className="body-sm text-amber-700 dark:text-amber-400">{importError}</p>
               </Card>
             )}
             <Card className="p-6">
@@ -415,6 +521,12 @@ export default function CheckPage() {
                         {issue.file && (
                           <span className="code block opacity-70">{issue.file}</span>
                         )}
+                        {issue.fix && (
+                          <span className="mt-1 block text-xs opacity-90">
+                            <span className="font-semibold">How to fix: </span>
+                            {issue.fix}
+                          </span>
+                        )}
                       </span>
                     </li>
                   ))}
@@ -429,12 +541,17 @@ export default function CheckPage() {
             </Card>
 
             <div className="flex flex-wrap items-center gap-3">
-              {timeAgo && (
+              {proofRestored && timeAgo && (
                 <span className="text-xs text-muted-foreground">
                   Proof from {timeAgo}
                 </span>
               )}
-              <Button variant="outline" onClick={clearProofAndReset}>
+              {importedProjectId && (
+                <span className="text-xs text-muted-foreground">
+                  Shelved in your library — Studio opens this copy.
+                </span>
+              )}
+              <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
                 Proof another file
               </Button>
               <button

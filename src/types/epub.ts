@@ -38,6 +38,8 @@ export interface ValidationIssue {
   severity: "error" | "warning" | "info";
   message: string;
   file?: string;
+  /** Plain-language guidance a non-technical author can follow to fix it. */
+  fix?: string;
 }
 
 export interface ValidationResult {

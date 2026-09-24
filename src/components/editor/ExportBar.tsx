@@ -1,12 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useExport } from "@/hooks/useExport";
+import { buildEpub } from "@/lib/epub/generate";
+import { originalFileIfUnedited, setPendingCheckFile } from "@/lib/epub/proof-cache";
+import { useProjectStore } from "@/lib/store/project";
 import Link from "next/link";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
   BookOpen,
+  ClipboardCheck,
   Download,
   Library,
   List,
@@ -35,7 +40,9 @@ export function ExportBar({
   chaptersCount?: number;
 }) {
   const { exportEpub, canExport } = useExport();
+  const router = useRouter();
   const [exporting, setExporting] = useState(false);
+  const [proofing, setProofing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleExport() {
@@ -47,6 +54,34 @@ export function ExportBar({
       setError(err instanceof Error ? err.message : "Export failed");
     } finally {
       setExporting(false);
+    }
+  }
+
+  async function handleProof() {
+    setProofing(true);
+    setError(null);
+    try {
+      const project = useProjectStore.getState().project;
+      if (!project) throw new Error("No book open to proof");
+      if (project.chapters.length === 0) throw new Error("No chapters to proof");
+      // Unedited since the Proof Desk shelved it? Send the original bytes
+      // so the proof reproduces instead of a normalized rebuild. Otherwise
+      // build the current state.
+      const original = originalFileIfUnedited(project.id, project.updatedAt);
+      if (original) {
+        setPendingCheckFile(original, project.id);
+      } else {
+        const { blob, filename } = await buildEpub(project);
+        setPendingCheckFile(
+          new File([blob], filename, { type: "application/epub+zip" }),
+          project.id
+        );
+      }
+      router.push("/check");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not send to the Proof Desk");
+    } finally {
+      setProofing(false);
     }
   }
 
@@ -105,6 +140,22 @@ export function ExportBar({
           >
             <BookOpen className="h-4 w-4 mr-1" /> Read
           </Link>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleProof}
+            disabled={!canExport || proofing}
+            title="Build this book and proof it at the Proof Desk"
+            className="bg-background"
+          >
+            {proofing ? (
+              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+            ) : (
+              <ClipboardCheck className="h-4 w-4 mr-1" />
+            )}
+            Proof
+          </Button>
 
           <Separator orientation="vertical" className="mx-1 hidden h-6 sm:block" />
 
