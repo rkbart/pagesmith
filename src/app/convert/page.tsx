@@ -197,7 +197,7 @@ export default function ConvertHub() {
       </div>
 
       {queue ? (
-        <ImportQueue items={queue} onOpen={() => router.push("/library")} onReset={resetQueue} />
+        <ImportQueue items={queue} onOpen={() => router.push("/editor")} onReset={resetQueue} />
       ) : (
         <>
           <FileDropZone

@@ -95,12 +95,13 @@ export function ImportQueue({
                 {item.format}
               </span>
             )}
-            <span className="w-20 shrink-0 text-right text-xs text-muted-foreground">
-              {item.status === "queued" && "Queued"}
-              {item.status === "parsing" && "Reading…"}
-              {item.status === "done" && `${item.chapters ?? 0} ch.`}
-              {item.status === "error" && "Failed"}
-            </span>
+            {item.status !== "parsing" && (
+              <span className="w-20 shrink-0 text-right text-xs text-muted-foreground">
+                {item.status === "queued" && "Queued"}
+                {item.status === "done" && `${item.chapters ?? 0} ch.`}
+                {item.status === "error" && "Failed"}
+              </span>
+            )}
           </li>
         ))}
       </ul>
@@ -118,7 +119,7 @@ export function ImportQueue({
               disabled={boundChapters === 0}
               className="w-full sm:w-auto"
             >
-              Open library
+              Open in the studio
             </Button>
             <Button variant="outline" onClick={onReset} className="w-full sm:w-auto">
               Start over
