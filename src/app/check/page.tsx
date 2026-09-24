@@ -29,23 +29,34 @@ import { FileDropZone } from "@/components/converter/FileDropZone";
 
 const PROOF_KEY = "pagesmith-proof-result";
 const PROOF_FILE_KEY = "pagesmith-proof-filename";
+const PROOF_TIME_KEY = "pagesmith-proof-time";
 
 function saveProof(result: ValidationResult, fileName: string) {
   try {
     sessionStorage.setItem(PROOF_KEY, JSON.stringify(result));
     sessionStorage.setItem(PROOF_FILE_KEY, fileName);
+    sessionStorage.setItem(PROOF_TIME_KEY, Date.now().toString());
   } catch {
     /* storage full or unavailable */
   }
 }
 
-function loadProof(): { result: ValidationResult | null; fileName: string } {
+function loadProof(): {
+  result: ValidationResult | null;
+  fileName: string;
+  timestamp: number | null;
+} {
   try {
     const raw = sessionStorage.getItem(PROOF_KEY);
     const name = sessionStorage.getItem(PROOF_FILE_KEY) ?? "";
-    return { result: raw ? JSON.parse(raw) : null, fileName: name };
+    const time = sessionStorage.getItem(PROOF_TIME_KEY);
+    return {
+      result: raw ? JSON.parse(raw) : null,
+      fileName: name,
+      timestamp: time ? parseInt(time, 10) : null,
+    };
   } catch {
-    return { result: null, fileName: "" };
+    return { result: null, fileName: "", timestamp: null };
   }
 }
 
@@ -53,6 +64,7 @@ function clearProof() {
   try {
     sessionStorage.removeItem(PROOF_KEY);
     sessionStorage.removeItem(PROOF_FILE_KEY);
+    sessionStorage.removeItem(PROOF_TIME_KEY);
   } catch {
     /* unavailable */
   }
@@ -144,13 +156,15 @@ export default function CheckPage() {
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
   const [copied, setCopied] = useState(false);
+  const [proofTimestamp, setProofTimestamp] = useState<number | null>(null);
 
-  // Restore proof from sessionStorage on mount (survives back-navigation)
+  // Restore proof from sessionStorage on mount (survives back-navigation).
   useEffect(() => {
     const saved = loadProof();
     if (saved.result) {
       setResult(saved.result);
       setFileName(saved.fileName);
+      setProofTimestamp(saved.timestamp);
     }
   }, []);
 
@@ -160,6 +174,7 @@ export default function CheckPage() {
     setResult(null);
     setFilter("all");
     setFileName(file.name);
+    setProofTimestamp(null);
     clearProof();
 
     try {
@@ -238,13 +253,25 @@ export default function CheckPage() {
     router.push(`/editor?proof=${encodeURIComponent(summary)}`);
   }, [result, counts, router]);
 
-  const clearAndNewProof = useCallback(() => {
+  const clearProofAndReset = useCallback(() => {
     setResult(null);
     setFileName("");
     setError(null);
     setFilter("all");
+    setProofTimestamp(null);
     clearProof();
   }, []);
+
+  const timeAgo = useMemo(() => {
+    if (!proofTimestamp) return null;
+    const seconds = Math.floor((Date.now() - proofTimestamp) / 1000);
+    if (seconds < 60) return "just now";
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    return `${Math.floor(hours / 24)}d ago`;
+  }, [proofTimestamp]);
 
   const filters: { key: Filter; label: string; count: number }[] = [
     { key: "all", label: "All", count: result?.issues.length ?? 0 },
@@ -384,7 +411,12 @@ export default function CheckPage() {
             </Card>
 
             <div className="flex flex-wrap items-center gap-3">
-              <Button variant="outline" onClick={clearAndNewProof}>
+              {timeAgo && (
+                <span className="text-xs text-muted-foreground">
+                  Proof from {timeAgo}
+                </span>
+              )}
+              <Button variant="outline" onClick={clearProofAndReset}>
                 Proof another file
               </Button>
               <button

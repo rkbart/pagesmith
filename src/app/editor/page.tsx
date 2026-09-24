@@ -66,15 +66,8 @@ export default function EditorPage() {
 
   // Proof errors from /check — shown as a dismissible banner.
   const [proofDismissed, setProofDismissed] = useState(false);
-  const proofData = useMemo(() => {
-    const raw = searchParams.get("proof");
-    if (!raw) return null;
-    try {
-      return JSON.parse(raw);
-    } catch {
-      return null;
-    }
-  }, [searchParams]);
+  const proofRaw = searchParams.get("proof");
+  const proofData = proofRaw ? (() => { try { return JSON.parse(proofRaw); } catch { return null; } })() : null;
 
   useEffect(() => {
     setProofDismissed(false);
