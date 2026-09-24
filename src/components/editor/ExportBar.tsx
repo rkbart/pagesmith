@@ -13,7 +13,6 @@ import {
   BookOpen,
   ClipboardCheck,
   Download,
-  Library,
   List,
   Settings2,
   Sparkles,
@@ -44,6 +43,7 @@ export function ExportBar({
   const [exporting, setExporting] = useState(false);
   const [proofing, setProofing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [titleExpanded, setTitleExpanded] = useState(false);
 
   async function handleExport() {
     setExporting(true);
@@ -89,18 +89,24 @@ export function ExportBar({
     <div className="rounded-2xl border bg-card p-3 shadow-panel">
       <div className="flex flex-wrap items-center justify-between gap-2 px-2">
         <div className="flex min-w-0 items-center gap-2">
-          <Link
-            href="/library"
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+          <h1
+            className="font-heading min-w-0 truncate text-lg lg:whitespace-nowrap"
+            title={project.metadata.title || project.name}
           >
-            <Library className="size-4" aria-hidden="true" />
-            All books
-          </Link>
-          <span className="text-muted-foreground/40" aria-hidden="true">
-            /
-          </span>
-          <h1 className="font-heading min-w-0 truncate text-lg">
-            {project.metadata.title || project.name}
+            <span
+              role="button"
+              tabIndex={0}
+              className={`${titleExpanded ? "" : "truncate"} block cursor-pointer lg:cursor-default`}
+              onClick={() => setTitleExpanded((v) => !v)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setTitleExpanded((v) => !v);
+                }
+              }}
+            >
+              {project.metadata.title || project.name}
+            </span>
           </h1>
         </div>
         <div className="flex flex-wrap items-center gap-2">

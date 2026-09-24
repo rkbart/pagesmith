@@ -32,8 +32,8 @@
 - `ChapterList` — drag-reorder, delete, add, active highlight.
 - `ChapterEditor` — title/level inputs, formatting toolbar, contenteditable prose area.
 - `MetadataForm` — core fields + collapsed Contributors/Publishing/Discovery/Series sections; derived word-count chip (computed, not stored).
-- `CoverUpload` — image upload/remove, base64 store.
-- `ExportBar` — Metadata/AI toggles, Read + All-books links, Export EPUB button + error display.
+- `CoverUpload` — image upload/remove/undo, previous-cover restore within 6 s.
+- `ExportBar` — Metadata/AI toggles, Read + Proof links, Export EPUB button + error display.
 - `AIPanel` — Readability/Translate/Edit tools, config badge, apply/copy result.
 
 ## Reader (`src/components/reader/`)

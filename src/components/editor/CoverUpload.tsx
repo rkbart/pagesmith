@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useProjectStore } from "@/lib/store/project";
-import { ImagePlus, X } from "lucide-react";
+import { ImagePlus, X, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import type { BookCover } from "@/types/project";
 
 /**
  * Compact cover strip: thumbnail + status + change/remove actions in one
@@ -15,6 +16,7 @@ export function CoverUpload() {
   const inputRef = useRef<HTMLInputElement>(null);
   // Two-step delete confirm (no dialog needed for one destructive action).
   const [confirming, setConfirming] = useState(false);
+  const [previousCover, setPreviousCover] = useState<BookCover | null>(null);
 
   const handleFile = useCallback(
     (file: File) => {
@@ -22,6 +24,11 @@ export function CoverUpload() {
         alert("Please select an image file");
         return;
       }
+      // Save current cover before replacing so it can be undone.
+      if (project?.cover) {
+        setPreviousCover(project.cover);
+      }
+      setConfirming(false);
       const reader = new FileReader();
       reader.onload = () => {
         setCover({
@@ -31,8 +38,15 @@ export function CoverUpload() {
       };
       reader.readAsDataURL(file);
     },
-    [setCover]
+    [setCover, project]
   );
+
+  // Clear undo buffer after a few seconds.
+  useEffect(() => {
+    if (!previousCover) return;
+    const t = setTimeout(() => setPreviousCover(null), 6000);
+    return () => clearTimeout(t);
+  }, [previousCover]);
 
   if (!project) return null;
 
@@ -80,6 +94,8 @@ export function CoverUpload() {
             type="button"
             onClick={() => {
               if (!confirming) {
+                // Save cover before removing so it can be undone.
+                setPreviousCover(project.cover!);
                 setConfirming(true);
                 setTimeout(() => setConfirming(false), 3000);
                 return;
@@ -100,6 +116,19 @@ export function CoverUpload() {
             {confirming ? "Sure?" : <X className="size-4" aria-hidden="true" />}
           </button>
         </>
+      ) : previousCover ? (
+        <Button
+          variant="outline"
+          size="sm"
+          className="shrink-0"
+          onClick={() => {
+            setCover(previousCover);
+            setPreviousCover(null);
+          }}
+        >
+          <Undo2 className="size-4 mr-1" />
+          Restore
+        </Button>
       ) : (
         <Button
           variant="outline"
