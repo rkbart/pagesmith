@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Loader2,
@@ -18,12 +19,44 @@ import {
   Route,
   BookOpen,
 } from "lucide-react";
+import { buttonVariants } from "@/components/ui/button";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { validateEpub } from "@/lib/epub/validate";
 import type { ValidationResult } from "@/types/epub";
 import { FileDropZone } from "@/components/converter/FileDropZone";
+
+const PROOF_KEY = "pagesmith-proof-result";
+const PROOF_FILE_KEY = "pagesmith-proof-filename";
+
+function saveProof(result: ValidationResult, fileName: string) {
+  try {
+    sessionStorage.setItem(PROOF_KEY, JSON.stringify(result));
+    sessionStorage.setItem(PROOF_FILE_KEY, fileName);
+  } catch {
+    /* storage full or unavailable */
+  }
+}
+
+function loadProof(): { result: ValidationResult | null; fileName: string } {
+  try {
+    const raw = sessionStorage.getItem(PROOF_KEY);
+    const name = sessionStorage.getItem(PROOF_FILE_KEY) ?? "";
+    return { result: raw ? JSON.parse(raw) : null, fileName: name };
+  } catch {
+    return { result: null, fileName: "" };
+  }
+}
+
+function clearProof() {
+  try {
+    sessionStorage.removeItem(PROOF_KEY);
+    sessionStorage.removeItem(PROOF_FILE_KEY);
+  } catch {
+    /* unavailable */
+  }
+}
 
 const STATIONS = [
   {
@@ -91,7 +124,7 @@ const FAQ = [
   },
   {
     q: "How do I fix what it finds?",
-    a: "Open the book in the Editor, correct the chapter or metadata named in the message, and export again. Then drop the new file here to confirm the issue is gone. If the book was made in another tool, fix it there and re-export.",
+    a: "Open the book in the Studio, correct the chapter or metadata named in the message, and export again. Then drop the new file here to confirm the issue is gone. If the book was made in another tool, fix it there and re-export.",
   },
   {
     q: "What can't a structural check tell me?",
@@ -104,6 +137,7 @@ type Filter = "all" | "error" | "warning" | "info";
 const severityRank = { error: 0, warning: 1, info: 2 } as const;
 
 export default function CheckPage() {
+  const router = useRouter();
   const [parsing, setParsing] = useState(false);
   const [result, setResult] = useState<ValidationResult | null>(null);
   const [fileName, setFileName] = useState("");
@@ -111,16 +145,27 @@ export default function CheckPage() {
   const [filter, setFilter] = useState<Filter>("all");
   const [copied, setCopied] = useState(false);
 
+  // Restore proof from sessionStorage on mount (survives back-navigation)
+  useEffect(() => {
+    const saved = loadProof();
+    if (saved.result) {
+      setResult(saved.result);
+      setFileName(saved.fileName);
+    }
+  }, []);
+
   const handleFile = useCallback(async (file: File) => {
     setParsing(true);
     setError(null);
     setResult(null);
     setFilter("all");
     setFileName(file.name);
+    clearProof();
 
     try {
       const validation = await validateEpub(file);
       setResult(validation);
+      saveProof(validation, file.name);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to validate EPUB");
     } finally {
@@ -181,6 +226,25 @@ export default function CheckPage() {
     a.click();
     URL.revokeObjectURL(url);
   }, [buildReport, fileName]);
+
+  const goToEditor = useCallback(() => {
+    if (!result) return;
+    // Encode issues summary so the editor can point to them
+    const summary = JSON.stringify({
+      errors: counts.error,
+      warnings: counts.warning,
+      info: counts.info,
+    });
+    router.push(`/editor?proof=${encodeURIComponent(summary)}`);
+  }, [result, counts, router]);
+
+  const clearAndNewProof = useCallback(() => {
+    setResult(null);
+    setFileName("");
+    setError(null);
+    setFilter("all");
+    clearProof();
+  }, []);
 
   const filters: { key: Filter; label: string; count: number }[] = [
     { key: "all", label: "All", count: result?.issues.length ?? 0 },
@@ -319,13 +383,16 @@ export default function CheckPage() {
               )}
             </Card>
 
-              <div className="flex flex-wrap items-center gap-3">
-              <Button variant="outline" onClick={() => setResult(null)}>
+            <div className="flex flex-wrap items-center gap-3">
+              <Button variant="outline" onClick={clearAndNewProof}>
                 Proof another file
               </Button>
-              <Link href="/editor" className="inline-flex items-center rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 px-4 py-2">
-                Open the Editor to fix issues
-              </Link>
+              <button
+                className={buttonVariants({ variant: "brass", size: "sm" })}
+                onClick={goToEditor}
+              >
+                Open Studio to fix issues
+              </button>
             </div>
           </div>
         )}

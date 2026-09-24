@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useProjectStore } from "@/lib/store/project";
 import { useProjectHydrated } from "@/hooks/useHydrated";
 import { ChapterList } from "@/components/editor/ChapterList";
@@ -12,6 +13,8 @@ import { ExportBar } from "@/components/editor/ExportBar";
 import { BackToTop } from "@/components/shared/BackToTop";
 import { AIPanel } from "@/components/ai/AIPanel";
 import { buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import {
   Plus,
   Library,
@@ -20,9 +23,12 @@ import {
   Settings2,
   Sparkles,
   X,
+  AlertTriangle,
+  ArrowLeft,
 } from "lucide-react";
 
 export default function EditorPage() {
+  const searchParams = useSearchParams();
   const {
     project,
     projects,
@@ -57,6 +63,22 @@ export default function EditorPage() {
   const [aiOpen, setAiOpen] = useState(false);
   // Metadata docks the same way.
   const [metaOpen, setMetaOpen] = useState(false);
+
+  // Proof errors from /check — shown as a dismissible banner.
+  const [proofDismissed, setProofDismissed] = useState(false);
+  const proofData = useMemo(() => {
+    const raw = searchParams.get("proof");
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    setProofDismissed(false);
+  }, [proofData]);
 
   useEffect(() => {
     if (!aiOpen && !metaOpen) return;
@@ -116,8 +138,42 @@ export default function EditorPage() {
   const activeChapter = project.chapters.find((c) => c.id === activeChapterId);
 
   return (
-    <div className="container px-4 sm:px-6 lg:px-8 py-6">
-      <ExportBar
+      <div className="container px-4 sm:px-6 lg:px-8 py-6">
+        {proofData && !proofDismissed && (
+          <Card className="mb-4 border-amber-500/30 bg-amber-500/5 p-4 sm:p-5">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="mt-0.5 size-5 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+              <div className="flex-1">
+                <p className="font-heading text-sm">
+                  Your last proof found {proofData.errors} error{proofData.errors !== 1 ? "s" : ""}
+                  {proofData.warnings > 0 ? ` and ${proofData.warnings} warning${proofData.warnings !== 1 ? "s" : ""}` : ""}
+                  {proofData.info > 0 ? ` and ${proofData.info} info` : ""}.
+                </p>
+                <p className="body-sm mt-1 text-muted-foreground">
+                  Head to the Proof Desk to review and fix them before
+                  exporting.
+                </p>
+              </div>
+              <div className="flex shrink-0 gap-2">
+                <Link
+                  href="/check"
+                  className="inline-flex items-center rounded-md bg-brass-soft px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-brass/90"
+                >
+                  View proof
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setProofDismissed(true)}
+                  className="rounded-md p-1 text-muted-foreground transition-colors hover:text-foreground"
+                  aria-label="Dismiss"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
+            </div>
+          </Card>
+        )}
+        <ExportBar
         project={project}
         aiOpen={aiOpen}
         onToggleAI={() => { setMetaOpen(false); setAiOpen((v) => !v); }}
