@@ -10,7 +10,7 @@ Failed files are skipped and reported per row.
 
 | Source | Parser | Detection strategy |
 |---|---|---|
-| PDF | `src/lib/parsers/pdf.ts` | pdfjs-dist text extraction; regex on "Chapter N", Roman numerals, prologue/epilogue |
+| PDF | `src/lib/parsers/pdf.ts` | pdfjs-dist text extraction; visual-line chapter regex (wrapped titles re-joined, TOC pages skipped); embedded illustrations extracted (first large image → cover); single-file PDF import auto-downloads the finished EPUB |
 | DOCX | `src/lib/parsers/docx.ts` | mammoth → HTML; splits on h1/h2 |
 | Markdown | `src/lib/parsers/markdown.ts` | YAML frontmatter for metadata; splits on `#`–`###` |
 | HTML | `src/lib/parsers/html.ts` | Strips nav/ads/scripts; splits on h1/h2; extracts meta tags |

@@ -137,12 +137,22 @@ export default function ConvertHub() {
       await updateItem(item.id, { status: "parsing" });
       try {
         const result = await parseFile(item.file, item.format);
+        const addedFrom = mergedChapters.length;
         for (const chapter of result.chapters) {
           // Fresh ids so files can never collide on chapter keys/TOC entries.
           mergedChapters.push({ ...chapter, id: newChapterId() });
         }
         metadata = mergeMetadata(metadata, result.metadata);
-        cover ??= result.cover;
+        if (!cover) {
+          cover = result.cover;
+        } else if (result.cover && mergedChapters.length > addedFrom) {
+          // Only the first file's cover becomes the book cover — later
+          // files' covers are re-attached as inline illustrations so the
+          // merge never silently drops artwork.
+          const first = mergedChapters[addedFrom];
+          first.content =
+            `<p class="center"><img src="${result.cover.data}" alt="Illustration"/></p>\n${first.content}`;
+        }
         await updateItem(item.id, {
           status: "done",
           chapters: result.chapters.length,

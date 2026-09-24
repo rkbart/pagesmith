@@ -10,7 +10,7 @@ const CONTAINER_XML = `<?xml version="1.0" encoding="UTF-8"?>
   </rootfiles>
 </container>`;
 
-function buildContentOpf(project: Project, chapterFiles: { id: string; href: string }[], hasCover: boolean): string {
+function buildContentOpf(project: Project, chapterFiles: { id: string; href: string }[], hasCover: boolean, imageFiles: ImageFile[]): string {
   const { metadata } = project;
   const identifier = metadata.isbn || `urn:uuid:${project.id}`;
   const date = metadata.date || new Date().toISOString().split("T")[0];
@@ -73,6 +73,12 @@ function buildContentOpf(project: Project, chapterFiles: { id: string; href: str
 
   const navItem = `    <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>`;
 
+  // Content illustrations extracted from chapter HTML (data-URL <img> tags
+  // materialized as real files by extractInlineImages, below).
+  const imageItems = imageFiles
+    .map((f) => `    <item id="${f.id}" href="${f.href}" media-type="${f.mime}"/>`)
+    .join("\n");
+
   return `<?xml version="1.0" encoding="UTF-8"?>
 <package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="BookId" xml:lang="${metadata.language || "en"}">
   <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
@@ -96,7 +102,7 @@ ${series ? `${series}\n` : ""}    <meta property="dcterms:modified">${new Date()
 ${navItem}
 ${manifestItems}${coverItem}
     <item id="css" href="styles.css" media-type="text/css"/>
-  </manifest>
+${imageItems ? `${imageItems}\n` : ""}  </manifest>
   <spine${direction}>
 ${spineItems}
   </spine>
@@ -226,6 +232,50 @@ export interface BuildResult {
   filename: string;
 }
 
+interface ImageFile {
+  id: string;
+  href: string;
+  mime: string;
+  base64: string;
+}
+
+const IMAGE_MIME_EXT: Record<string, { ext: string; mime: string }> = {
+  "image/jpeg": { ext: "jpg", mime: "image/jpeg" },
+  "image/png": { ext: "png", mime: "image/png" },
+  "image/gif": { ext: "gif", mime: "image/gif" },
+  "image/webp": { ext: "webp", mime: "image/webp" },
+  "image/svg+xml": { ext: "svg", mime: "image/svg+xml" },
+};
+
+/**
+ * Pull data-URL <img> tags out of chapter HTML into real EPUB image files.
+ * Identical images (e.g. a publisher logo repeated on every page) are stored
+ * once and referenced repeatedly. Chapter files live in OEBPS/text/, so
+ * rewritten sources point at ../images/.
+ */
+function extractInlineImages(html: string, prefix: string, cache: Map<string, ImageFile>): { html: string; files: ImageFile[] } {
+  if (!html.includes("data:image")) return { html, files: [] };
+  const doc = new DOMParser().parseFromString(`<body>${html}</body>`, "text/html");
+  const files: ImageFile[] = [];
+  doc.querySelectorAll("img").forEach((img) => {
+    const src = img.getAttribute("src") ?? "";
+    const m = src.match(/^data:(image\/[a-z+]+);base64,([A-Za-z0-9+/=]+)$/);
+    if (!m) return;
+    const info = IMAGE_MIME_EXT[m[1].toLowerCase()];
+    if (!info || !m[2]) return;
+    let file = cache.get(m[2]);
+    if (!file) {
+      const id = `${prefix}-${cache.size}`;
+      file = { id, href: `images/${id}.${info.ext}`, mime: info.mime, base64: m[2] };
+      cache.set(m[2], file);
+    }
+    if (!files.some((f) => f.id === file.id)) files.push(file);
+    img.setAttribute("src", `../${file.href}`);
+    if (!img.getAttribute("alt")) img.setAttribute("alt", "Illustration");
+  });
+  return { html: doc.body.innerHTML, files };
+}
+
 export async function buildEpub(project: Project): Promise<BuildResult> {
   const JSZip = (await import("jszip")).default;
   const zip = new JSZip();
@@ -272,15 +322,29 @@ export async function buildEpub(project: Project): Promise<BuildResult> {
     content: resolveChapterLinks(ch.content),
   }));
 
+  // Materialize inline data-URL images (PDF import illustrations, EPUB
+  // round-trip images) as OEBPS/images/* files with manifest entries.
+  const imageCache = new Map<string, ImageFile>();
+  const chaptersWithFiles = resolvedChapters.map((ch, i) => {
+    const { html, files } = extractInlineImages(ch.content, `img${i + 1}`, imageCache);
+    return { ...ch, content: html, imageFiles: files };
+  });
+  const imageFiles = [...imageCache.values()];
+
   // OEBPS files
-  zip.file("OEBPS/content.opf", buildContentOpf(project, chapterFiles, !!project.cover));
+  zip.file("OEBPS/content.opf", buildContentOpf(project, chapterFiles, !!project.cover, imageFiles));
   zip.file("OEBPS/nav.xhtml", buildNav(project, chapterFiles));
   zip.file("OEBPS/styles.css", buildStyles());
 
   // Chapter files
-  for (let i = 0; i < resolvedChapters.length; i++) {
-    const xhtml = buildChapterXhtml(project, resolvedChapters[i]);
+  for (let i = 0; i < chaptersWithFiles.length; i++) {
+    const xhtml = buildChapterXhtml(project, chaptersWithFiles[i]);
     zip.file(`OEBPS/${chapterFiles[i].href}`, xhtml);
+  }
+
+  // Content images (shared store — each file written once)
+  for (const file of imageFiles) {
+    zip.file(`OEBPS/${file.href}`, file.base64, { base64: true });
   }
 
   // Cover image

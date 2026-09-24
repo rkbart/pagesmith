@@ -7,6 +7,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useProjectStore } from "@/lib/store/project";
 import { useParser } from "@/hooks/useParser";
+import { buildEpub, downloadBlob } from "@/lib/epub/generate";
 import type { SourceFormat } from "@/types/project";
 import { FileDropZone } from "@/components/converter/FileDropZone";
 import { ChapterReview } from "@/components/converter/ChapterReview";
@@ -31,15 +32,32 @@ export default function ConvertFormatPage({
   const { createProject } = useProjectStore();
   const { parsing, error, result, parse } = useParser();
   const [parsed, setParsed] = useState(false);
+  const [autoExport, setAutoExport] = useState<string | null>(null);
 
   // Always bind a fresh project per import — an open book is never
   // overwritten by accident.
   const runParse = useCallback(
     async (selectedFile: File, projectName: string) => {
+      setAutoExport(null);
       try {
         createProject(projectName);
         await parse(selectedFile, format as SourceFormat);
         setParsed(true);
+        // PDF imports finish as a ready EPUB: text, chapters, cover and
+        // illustrations are all in the project, so press the book and hand
+        // it over — no extra clicks. Export failure never fails the import.
+        if (format === "pdf") {
+          try {
+            const project = useProjectStore.getState().project;
+            if (project && project.chapters.length > 0) {
+              const { blob, filename } = await buildEpub(project);
+              downloadBlob(blob, filename);
+              setAutoExport(filename);
+            }
+          } catch {
+            setAutoExport("EPUB export failed — your book is still in the studio, export it from the editor.");
+          }
+        }
       } catch {
         // error state is surfaced by useParser
       }
@@ -62,6 +80,7 @@ export default function ConvertFormatPage({
 
   const reset = () => {
     setParsed(false);
+    setAutoExport(null);
   };
 
   if (!formatInfo) {
@@ -124,6 +143,15 @@ export default function ConvertFormatPage({
                     {w}
                   </p>
                 ))}
+              </div>
+            )}
+            {autoExport && (
+              <div className="mb-4 rounded-lg border border-brass/30 bg-brass/10 p-3">
+                <p className="text-sm">
+                  Your EPUB converted automatically and downloaded as{" "}
+                  <span className="font-medium">{autoExport}</span> — it&apos;s
+                  also waiting for you in the studio.
+                </p>
               </div>
             )}
             <ChapterReview chapters={result.chapters} />

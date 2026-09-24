@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useProjectStore } from "@/lib/store/project";
 import { useProjectHydrated } from "@/hooks/useHydrated";
@@ -41,7 +41,7 @@ import {
   RotateCw,
 } from "lucide-react";
 
-export default function EditorPage() {
+function EditorContent() {
   const searchParams = useSearchParams();
   const {
     project,
@@ -553,5 +553,20 @@ export default function EditorPage() {
       </div>
       <BackToTop />
     </div>
+  );
+}
+
+// useSearchParams() needs a Suspense boundary for static prerendering.
+export default function EditorPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="container py-16 text-center">
+          <p className="font-heading mt-4 text-lg">Opening the studio…</p>
+        </div>
+      }
+    >
+      <EditorContent />
+    </Suspense>
   );
 }

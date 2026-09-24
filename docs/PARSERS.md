@@ -15,8 +15,9 @@ Entry point: `parseFile(file, format)` in `src/lib/parsers/index.ts`.
 Format detection: `detectFormat(filename)` by extension.
 
 ## pdf.ts
-- Dynamic import `pdfjs-dist`
-- Extracts per-page text via `getTextContent()`
+- Dynamic import `pdfjs-dist` (worker served locally from `public/pdf.worker.min.mjs`, see `sync:pdf-worker`)
+- Extracts per-page text via `getTextContent()`; visual lines via `hasEOL` marks
+- Illustrations via operator-list image refs (`page.objs`), JPEG/PNG data URLs, tiny ornaments skipped, first large image → cover
 - Metadata from `pdf.getMetadata()` (Title/Author/Subject)
 - Chapter regexes: `chapter/ch./part/section + [roman|digits]`, prologue/epilogue/etc., `N. Title`, `ROMAN. `
 - Fallback: single "Content" chapter; pre-first-chapter pages → "Introduction"
