@@ -319,6 +319,24 @@ export default function CheckPage() {
 
         {result && !parsing && (
           <div className="space-y-6">
+            {timeAgo && (
+              <Card className="mb-4 border-amber-500/30 bg-amber-500/5 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="font-heading text-sm text-amber-800 dark:text-amber-300">
+                      This proof is from {timeAgo}
+                    </p>
+                    <p className="body-sm text-amber-700 dark:text-amber-400">
+                      The file may have been deleted or changed. Results may
+                      be stale.
+                    </p>
+                  </div>
+                  <Button variant="destructive" size="sm" onClick={clearProofAndReset}>
+                    Clear proof
+                  </Button>
+                </div>
+              </Card>
+            )}
             <Card className="p-6">
               <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
                 <div className="flex items-center gap-3">
