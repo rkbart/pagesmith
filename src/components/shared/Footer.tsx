@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Feather, Coffee, CodeXml, ShieldCheck } from "lucide-react";
+import { Feather, CodeXml, ShieldCheck } from "lucide-react";
+import { BmcButton } from "@/components/shared/BmcButton";
 
 const productLinks = [
   { href: "/library", label: "Library" },
@@ -53,15 +54,7 @@ export function Footer() {
           <div>
             <p className="eyebrow mb-3">Support the smith</p>
             <div className="flex flex-col gap-2">
-              <a
-                href="https://www.buymeacoffee.com/rkbart"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex w-fit items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <Coffee className="size-4 text-brass" aria-hidden="true" />
-                Buy Me a Coffee
-              </a>
+              <BmcButton />
               <a
                 href="https://github.com/rkbart/pagesmith"
                 target="_blank"

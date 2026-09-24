@@ -90,7 +90,7 @@ export function AIBand() {
               className="inline-flex w-fit items-center gap-2 text-sm font-medium text-brass-soft underline-offset-4 hover:underline"
             >
               <KeyRound className="size-4" aria-hidden="true" />
-              Bring your own OpenAI or Anthropic key
+              Run it local with Ollama — or plug in any of 12 cloud providers
             </Link>
           </div>
         </div>

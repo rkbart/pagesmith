@@ -15,7 +15,7 @@ export function FinalCta() {
           <Link href="/convert" className={buttonVariants({ variant: "brass", size: "lg" })}>
             Start binding <ArrowRight className="ml-2 h-4 w-4" />
           </Link>
-          <Link href="/editor" className={buttonVariants({ variant: "outline", size: "lg" })}>
+          <Link href="/editor" className={buttonVariants({ variant: "brass", size: "lg" })}>
             Open the studio
           </Link>
         </div>

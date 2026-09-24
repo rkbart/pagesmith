@@ -102,5 +102,5 @@ starts empty. Files are never uploaded.
 ## Other
 
 - Free, no account, no server upload of files
-- BuyMeACoffee link: https://www.buymeacoffee.com/rkbart
+- Official Buy Me a Coffee button (footer): https://www.buymeacoffee.com/rkbart
 - Responsive, dark-mode ready (shadcn/Tailwind v4)

@@ -1,4 +1,4 @@
-import { Layers, BookMarked, Eye, BadgeCheck, GripVertical } from "lucide-react";
+import { Layers, BookMarked, Eye, LibraryBig, BadgeCheck, GripVertical } from "lucide-react";
 
 const mockChapters = ["Dedication", "The Letter", "What the River Kept"];
 
@@ -64,8 +64,30 @@ export function FeatureBento() {
             </p>
           </div>
 
-          {/* Validation — wide tile */}
-          <div className="rounded-2xl border bg-card p-6 shadow-panel transition-shadow hover:shadow-lift sm:col-span-2">
+          {/* Library shelf */}
+          <div className="rounded-2xl border bg-card p-6 shadow-panel transition-shadow hover:shadow-lift">
+            <div className="grid size-10 place-items-center rounded-xl bg-brass/10">
+              <LibraryBig className="size-5 text-brass" aria-hidden="true" />
+            </div>
+            <h3 className="heading-md mt-4">A shelf for finished books</h3>
+            <p className="body-sm text-muted-foreground mt-2">
+              Every bound book lands on your library shelf — search across
+              titles and text, flip card or list views, and sort series into
+              collections.
+            </p>
+            <div className="mt-5 flex items-end gap-1.5" aria-hidden>
+              <div className="w-9 rounded-t-md bg-brass-soft/80" style={{ height: "52px" }} />
+              <div className="w-9 rounded-t-md bg-brass/25" style={{ height: "64px" }} />
+              <div className="w-9 rounded-t-md bg-brass-soft/50" style={{ height: "44px" }} />
+              <div className="w-9 rounded-t-md bg-brass/40" style={{ height: "58px" }} />
+              <span className="code ml-1 mb-1 rounded-md bg-muted px-2 py-1 text-muted-foreground">
+                Collections
+              </span>
+            </div>
+          </div>
+
+          {/* Validation */}
+          <div className="rounded-2xl border bg-card p-6 shadow-panel transition-shadow hover:shadow-lift">
             <div className="grid size-10 place-items-center rounded-xl bg-brass/10">
               <BadgeCheck className="size-5 text-brass" aria-hidden="true" />
             </div>

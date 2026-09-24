@@ -2,14 +2,14 @@
 
 ## Shared
 - `Header` — sticky nav (Library, Import, Proof Desk, Studio, Settings), mobile menu, theme toggle, BuyMeACoffee link.
-- `Footer` — tagline, privacy note, support link.
+- `Footer` — tagline, privacy note, official Buy Me a Coffee button (`BmcButton`, static vendor markup — the vendor script needs `document.write`), GitHub link.
 - `ThemeToggle` — reads the theme from `<html class="dark">` via `useSyncExternalStore` (the boot script in the root layout owns the class pre-paint, so a `useState` initializer would disagree with server HTML and force a client rebuild); renders the Classic toggle from `@theme-toggles/react`.
 
 ## Landing (`src/components/landing/`)
 - `Hero` — split layout, manuscript-sheet dropzone (single or multi-file → staged via `handoff.ts` or merged on the import desk), CTA links via `buttonVariants()`.
 - `ProcessPipeline` — Import → Refine → Export bindery steps.
 - `FormatStrip` — 6 source-format chips → `/convert/[format]`.
-- `FeatureBento` — asymmetric editor-feature grid with workbench mock.
+- `FeatureBento` — workbench grid: chapters mock, metadata, preview, library shelf (search/views/collections), validation chips.
 - `AIBand` — dark "apprentice" section: free-in-browser / BYOK split.
 - `FinalCta` — closing call to action.
 
