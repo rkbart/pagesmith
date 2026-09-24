@@ -86,8 +86,8 @@ first-entry order, and uncompressed storage), container, metadata,
 manifest, spine, chapters — client-side. Every finding ships a
 plain-language "How to fix". Filter findings by severity (all / errors
 / warnings / info), copy or download a plain-text proof report (fixes
-included), and read the six-station explanation, proof marks guide, and
-FAQ. Dropping a file also shelves a copy in the library (duplicate
+included), and read the six-station cards and proof marks guide.
+Dropping a file also shelves a copy in the library (duplicate
 titles get ` (1)`, ` (2)`, … suffixes) so "Open Studio to fix issues"
 opens that exact book; the proof survives back-navigation but a refresh
 starts empty. Files are never uploaded.

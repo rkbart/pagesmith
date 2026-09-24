@@ -11,7 +11,6 @@ import {
   Copy,
   Check,
   Download,
-  ChevronDown,
   FileText,
   Package,
   Fingerprint,
@@ -102,29 +101,6 @@ const MARKS = [
     label: "Info",
     tone: "border-border bg-secondary/60 text-muted-foreground",
     body: "A note about how the book is built. It does not need action, but it can explain why a reader behaves the way it does.",
-  },
-];
-
-const FAQ = [
-  {
-    q: "Is my book uploaded anywhere?",
-    a: "No. The file is opened and read inside your browser tab. Nothing is sent to a server, and closing the tab clears it.",
-  },
-  {
-    q: "The Proof Desk says \"Ready to ship\". Is that enough?",
-    a: "It means the structure is sound: the package, manifest, spine and chapters all agree with each other. Before you submit to a retailer, also run the W3C's official EPUBCheck, which tests far more rules than this page does. Think of this as a fast first proof, not the final sign-off.",
-  },
-  {
-    q: "What are the most common errors?",
-    a: "A manifest entry whose file is missing from the archive, a spine entry that points to nothing, a missing language or identifier in the metadata, and a mimetype file that was compressed when the book was zipped. Each message names the file involved so you can go straight to it.",
-  },
-  {
-    q: "How do I fix what it finds?",
-    a: "Open the book in the Studio, correct the chapter or metadata named in the message, and export again. Then drop the new file here to confirm the issue is gone. If the book was made in another tool, fix it there and re-export.",
-  },
-  {
-    q: "What can't a structural check tell me?",
-    a: "Whether your chapters are in the right order, whether images have useful descriptions, whether the text is readable at large sizes, or whether the cover looks good. Those need a person. Open the book in the Reading Room and page through it before you call it done.",
   },
 ];
 
@@ -582,23 +558,22 @@ export default function CheckPage() {
           trusted, so fix problems from the top down.
         </p>
 
-        <ol className="relative space-y-6 border-l border-border pl-8">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {STATIONS.map((s, idx) => (
-            <li key={s.name} className="relative">
-              <span
-                className="absolute -left-[2.85rem] flex size-9 items-center justify-center rounded-full border border-border bg-background text-brass"
-                aria-hidden="true"
-              >
-                <s.icon className="size-4" />
-              </span>
-              <h3 className="font-heading text-lg">
-                <span className="mr-2 text-muted-foreground">{idx + 1}.</span>
-                {s.name}
-              </h3>
-              <p className="body-sm mt-1 max-w-xl text-muted-foreground">{s.body}</p>
-            </li>
+            <Card key={s.name} className="p-5">
+              <div className="flex items-center gap-3">
+                <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-brass/10">
+                  <s.icon className="size-5 text-brass" aria-hidden="true" />
+                </div>
+                <h3 className="heading-sm">
+                  <span className="mr-1.5 text-muted-foreground">{idx + 1}.</span>
+                  {s.name}
+                </h3>
+              </div>
+              <p className="body-sm mt-3 text-muted-foreground">{s.body}</p>
+            </Card>
           ))}
-        </ol>
+        </div>
       </section>
 
       <section className="mb-16">
@@ -628,29 +603,11 @@ export default function CheckPage() {
             reference to run before you send a book to a retailer.
           </p>
           <div className="mt-5">
-            <Link href="/reader" className="inline-flex items-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50">
-              Read it in the Reading Room
+            <Link href="/library" className="inline-flex items-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50">
+              Go to the library
             </Link>
           </div>
         </Card>
-      </section>
-
-      <section className="mb-4">
-        <h2 className="heading-md mb-4">Questions</h2>
-        <div className="divide-y divide-border rounded-xl border border-border">
-          {FAQ.map((item) => (
-            <details key={item.q} className="group px-5 py-4">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                {item.q}
-                <ChevronDown
-                  className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180"
-                  aria-hidden="true"
-                />
-              </summary>
-              <p className="body-sm mt-3 max-w-2xl text-muted-foreground">{item.a}</p>
-            </details>
-          ))}
-        </div>
       </section>
     </div>
   );

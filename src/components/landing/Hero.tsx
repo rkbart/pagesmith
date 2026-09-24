@@ -82,7 +82,7 @@ export function Hero() {
               </Link>
               <Link
                 href="/editor"
-                className={`${buttonVariants({ variant: "brass", size: "lg" })} w-full justify-center sm:w-auto`}
+                className={`${buttonVariants({ variant: "outline", size: "lg" })} w-full justify-center border-input sm:w-auto`}
               >
                 Open the studio
               </Link>
