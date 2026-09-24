@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Feather, Menu, X, Coffee } from "lucide-react";
+import { Feather, Menu, X } from "lucide-react";
 import { useState } from "react";
 import { ThemeToggle } from "@/components/shared/ThemeToggle";
 
@@ -13,8 +13,6 @@ const navLinks = [
   { href: "/editor", label: "Studio" },
   { href: "/settings", label: "Settings" },
 ];
-
-const BMC_URL = "https://www.buymeacoffee.com/rkbart";
 
 export function Header() {
   const pathname = usePathname();
@@ -54,15 +52,6 @@ export function Header() {
 
         <div className="hidden md:flex items-center gap-2 ml-4">
           <ThemeToggle />
-          <a
-            href={BMC_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Support PageSmith on Buy Me a Coffee"
-            className="inline-flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-          >
-            <Coffee className="size-4" aria-hidden="true" />
-          </a>
         </div>
 
         <div className="md:hidden ml-auto flex items-center gap-1">
@@ -94,17 +83,6 @@ export function Header() {
               {link.label}
             </Link>
           ))}
-          <div className="flex items-center gap-2 pt-2">
-            <a
-              href={BMC_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Support PageSmith on Buy Me a Coffee"
-              className="inline-flex size-10 items-center justify-center rounded-lg border text-muted-foreground hover:bg-secondary"
-            >
-              <Coffee className="size-4" aria-hidden="true" />
-            </a>
-          </div>
         </div>
       )}
     </header>

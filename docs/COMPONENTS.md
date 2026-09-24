@@ -1,7 +1,7 @@
 # Components
 
 ## Shared
-- `Header` — sticky nav (Library, Import, Proof Desk, Studio, Settings), mobile menu, theme toggle, BuyMeACoffee link.
+- `Header` — sticky nav (Library, Import, Proof Desk, Studio, Settings), mobile menu, theme toggle.
 - `Footer` — tagline, privacy note, Buy Me a Coffee link, Email row (`CONTACT_EMAIL`, blank until set), GitHub profile link.
 - `ThemeToggle` — reads the theme from `<html class="dark">` via `useSyncExternalStore` (the boot script in the root layout owns the class pre-paint, so a `useState` initializer would disagree with server HTML and force a client rebuild); renders the Classic toggle from `@theme-toggles/react`.
 
