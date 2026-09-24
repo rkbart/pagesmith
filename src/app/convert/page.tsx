@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import {
@@ -11,6 +12,7 @@ import {
   BookOpen,
   AlertCircle,
   Info,
+  ArrowUpRight,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { FileDropZone } from "@/components/converter/FileDropZone";
@@ -34,12 +36,12 @@ import {
 } from "@/lib/utils/handoff";
 
 const formats = [
-  { icon: FileText, label: "PDF" },
-  { icon: FileType2, label: "DOCX" },
-  { icon: Hash, label: "Markdown" },
-  { icon: FileCode, label: "HTML" },
-  { icon: AlignLeft, label: "TXT" },
-  { icon: BookOpen, label: "EPUB" },
+  { icon: FileText, label: "PDF", href: "/convert/pdf" },
+  { icon: FileType2, label: "DOCX", href: "/convert/docx" },
+  { icon: Hash, label: "Markdown", href: "/convert/markdown" },
+  { icon: FileCode, label: "HTML", href: "/convert/html" },
+  { icon: AlignLeft, label: "TXT", href: "/convert/txt" },
+  { icon: BookOpen, label: "EPUB", href: "/convert/epub" },
 ];
 
 function newChapterId(): string {
@@ -225,15 +227,24 @@ export default function ConvertHub() {
             <p className="eyebrow mb-4 text-center">Allowed file formats</p>
             <div className="mx-auto grid max-w-3xl grid-cols-2 gap-3 sm:grid-cols-3">
               {formats.map((format) => (
-                <Card
+                <Link
                   key={format.label}
-                  className="h-full items-center gap-2 p-5 text-center"
+                  href={format.href}
+                  className="group h-full"
                 >
-                  <div className="mx-auto grid size-11 place-items-center rounded-xl bg-brass/10">
-                    <format.icon className="size-5 text-brass" aria-hidden="true" />
-                  </div>
-                  <h3 className="heading-sm">{format.label}</h3>
-                </Card>
+                  <Card className="h-full items-center gap-2 p-5 text-center transition-all hover:-translate-y-0.5 hover:border-brass/40 hover:shadow-lift">
+                    <div className="mx-auto grid size-11 place-items-center rounded-xl bg-brass/10">
+                      <format.icon className="size-5 text-brass" aria-hidden="true" />
+                    </div>
+                    <h3 className="heading-sm flex items-center gap-1">
+                      {format.label}
+                      <ArrowUpRight
+                        className="size-4 text-muted-foreground transition-colors group-hover:text-brass"
+                        aria-hidden="true"
+                      />
+                    </h3>
+                  </Card>
+                </Link>
               ))}
             </div>
           </div>

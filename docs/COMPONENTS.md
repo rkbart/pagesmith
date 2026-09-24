@@ -26,6 +26,7 @@
 - `FileDropZone` — reusable drag-drop + file input (`accept`, `onFile` / `onFiles` for multi, `label`, `disabled`).
 - `ChapterReview` — expandable chapter list with text preview + char count.
 - `ImportQueue` — multi-file import queue: per-file status (queued → chapters / warnings / failed; parsing shows a spinner with no label), `Cancel` while binding, summary once done.
+- Import desk (`src/app/convert/page.tsx`) — dropzone plus six format cards linking to `/convert/[format]`.
 
 ## Editor (`src/components/editor/`)
 - `ChapterList` — drag-reorder, delete, add, active highlight.
@@ -47,7 +48,7 @@
 - `AIPanel` — Readability/Translate/Edit tools, config badge, apply/copy result (rendered inside the editor).
 
 ## Utils (`src/lib/utils/`)
-- `handoff.ts` — stage a dropped file in sessionStorage so `/convert/[format]` can auto-parse it.
+- `handoff.ts` — stage a dropped file in memory (no quota, lost on reload) so `/convert/[format]` can auto-parse it.
 - `reading-progress.ts` — per-book bookmarks (`chapterId` + scroll ratio) and reader typography prefs, both localStorage.
 - `library-prefs.ts` — library cards/list layout choice, localStorage.
 - `library-search.ts` — pure helpers: `matchesQuery` (title/author/collection/chapter-title/chapter-text, HTML stripped), `paginate` (1-based slice + clamped page), `plainText`.
