@@ -46,7 +46,7 @@ async function generateDemoEpub() {
   for (let i = 0; i < CHAPTERS.length; i++) {
     const ch = CHAPTERS[i];
     const fileId = `chap-${i + 1}`;
-    const href = `OEBPS/chapter${i + 1}.xhtml`;
+    const href = `chapter${i + 1}.xhtml`;
     chapterFiles.push({ id: fileId, href, title: ch.title });
     zip.file(href, generateChapterXhtml(ch.title, ch.content));
   }
