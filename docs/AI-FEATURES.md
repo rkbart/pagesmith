@@ -44,6 +44,12 @@ Legacy `{ openaiKey, anthropicKey, model }` payloads are adopted automatically. 
 | `analyzeConsistency` | Cross-chapter plot/character/timeline check |
 | `calculateReadability` | Flesch-Kincaid grade + reading ease (offline) |
 
+## Tool input scope
+
+Single-chapter tools run on the **active chapter only**: Readability, Translate, Edit, Detect Chapters. Book-wide tools send **all chapters**: Summarize (4,000 chars each), Consistency (2,000 chars each, 12,000 total, needs ≥ 2 chapters).
+
+Truncation to know about: Detect Chapters sends only the first 8,000 characters of the active chapter — it re-splits one chapter, it does not scan the whole book.
+
 ## UI
 
 `AIPanel` (`src/components/ai/AIPanel.tsx`) — six tools (Readability / Translate / Edit / Summarize / Detect Chapters / Consistency), run button, result textarea, Copy, Apply to Chapter, Insert as New Chapter, recent results history. Provider badge reads live config.
