@@ -3,7 +3,6 @@ import { Inter, Playfair_Display, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/shared/Header";
 import { Footer } from "@/components/shared/Footer";
-import { DictionaryTooltip } from "@/components/ai/DictionaryTooltip";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -56,7 +55,6 @@ export default function RootLayout({
         className={`${inter.variable} ${playfair.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
       >
         <Header />
-        <DictionaryTooltip />
         <main className="flex-1">{children}</main>
         <Footer />
       </body>

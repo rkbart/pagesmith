@@ -21,7 +21,7 @@ npx tsc --noEmit && npm run build
 
 - **Convert** — 6 formats → EPUB with automatic chapter detection
 - **Edit** — multi-chapter editor with rich-text toolbar, drag-reorder, metadata, cover
-- **AI** — readability (offline), translate/edit/summarize (BYOK OpenAI/Anthropic), word dictionary lookup
+- **AI** — readability (offline), translate/edit/summarize (BYOK OpenAI/Anthropic)
 - **Preview** — read your book with TOC before export
 - **Export** — valid EPUB 3 (JSZip)
 - **Check** — structural EPUB validator
