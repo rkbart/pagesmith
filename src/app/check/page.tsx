@@ -40,9 +40,10 @@ export default function CheckPage() {
       <div className="mb-10 text-center">
         <p className="eyebrow mb-2">The inspector</p>
         <h1 className="heading-lg">EPUB Checker</h1>
-        <p className="body-md-loose mt-2 text-muted-foreground">
-          Press-check your EPUB before it goes out into the world.
-        </p>
+<p className="body-md-loose mt-2 text-muted-foreground">
+  Press-check your EPUB before it goes out into the world.
+  Drop a file to validate its structure — mimetype, container, metadata, manifest, spine, and chapter integrity — all checked client-side, nothing uploaded.
+</p>
       </div>
 
       {parsing && (
