@@ -4,13 +4,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Feather, Menu, X, Coffee } from "lucide-react";
 import { useState } from "react";
-import { buttonVariants } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/shared/ThemeToggle";
 
 const navLinks = [
   { href: "/library", label: "Library" },
   { href: "/convert", label: "Import" },
-  { href: "/check", label: "Checker" },
+  { href: "/check", label: "Proof Desk" },
+  { href: "/editor", label: "Studio" },
   { href: "/settings", label: "Settings" },
 ];
 
@@ -63,12 +63,6 @@ export function Header() {
           >
             <Coffee className="size-4" aria-hidden="true" />
           </a>
-          <Link
-            href="/editor"
-            className={buttonVariants({ variant: "brass", size: "sm" })}
-          >
-            Open Studio
-          </Link>
         </div>
 
         <div className="md:hidden ml-auto flex items-center gap-1">
@@ -101,13 +95,6 @@ export function Header() {
             </Link>
           ))}
           <div className="flex items-center gap-2 pt-2">
-            <Link
-              href="/editor"
-              className={buttonVariants({ variant: "brass", size: "sm", className: "flex-1" })}
-              onClick={() => setMobileOpen(false)}
-            >
-              Open Studio
-            </Link>
             <a
               href={BMC_URL}
               target="_blank"

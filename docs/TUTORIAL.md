@@ -9,7 +9,7 @@
 3. Drop/select the file(s). PageSmith parses them and shows detected chapters;
    multiple files are merged into one book in natural filename order.
 4. Review warnings, expand chapters to preview.
-5. Click **Open in Editor** (single file) or **Open in the studio** (merged queue).
+5. Click **Open in the studio** to edit, or **Bind another file** / **Start over** to import more. Single-file PDF imports also download the finished EPUB automatically.
 
 ## 1b. Manage your books
 

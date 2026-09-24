@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useSyncExternalStore } from "react";
-import { Moon, Sun } from "lucide-react";
+import { Classic } from "@theme-toggles/react";
 
 const STORAGE_KEY = "pagesmith-theme";
 
@@ -52,12 +52,11 @@ export function ThemeToggle() {
   }, [dark]);
 
   return (
-    <button
+    <Classic
+      toggled={dark}
       onClick={toggle}
       aria-label={dark ? "Switch to light theme" : "Switch to dark theme"}
-      className="rounded-lg p-2 transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-    >
-      {dark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-    </button>
+      className="rounded-lg p-2 text-xl transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+    />
   );
 }

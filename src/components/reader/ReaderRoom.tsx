@@ -1,8 +1,6 @@
 "use client";
 
-
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import {
   BookOpenCheck,
   ChevronLeft,
@@ -13,7 +11,7 @@ import {
 } from "lucide-react";
 import { BackToTop } from "@/components/shared/BackToTop";
 import { ReaderToc } from "./ReaderToc";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
   Dialog,
@@ -411,19 +409,6 @@ export function ReaderRoom({ project }: { project: Project }) {
             onReset={resetPrefs}
             className="hidden sm:block"
           />
-
-          <Separator orientation="vertical" className="mx-1 hidden h-5 sm:block" />
-
-          <Link
-            href="/library"
-            className={buttonVariants({
-              variant: "outline",
-              size: "sm",
-              className: "shrink-0",
-            })}
-          >
-            Library
-          </Link>
         </div>
 
         <div

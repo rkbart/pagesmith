@@ -1,9 +1,9 @@
 # Components
 
 ## Shared
-- `Header` — sticky nav (Library, Import, Checker, Settings), mobile menu, "Open Studio" CTA, BuyMeACoffee link (uses `buttonVariants()` on `<a>`, no `asChild`).
+- `Header` — sticky nav (Library, Import, Proof Desk, Studio, Settings), mobile menu, theme toggle, BuyMeACoffee link.
 - `Footer` — tagline, privacy note, support link.
-- `ThemeToggle` — reads the theme from `<html class="dark">` via `useSyncExternalStore` (the boot script in the root layout owns the class pre-paint, so a `useState` initializer would disagree with server HTML and force a client rebuild).
+- `ThemeToggle` — reads the theme from `<html class="dark">` via `useSyncExternalStore` (the boot script in the root layout owns the class pre-paint, so a `useState` initializer would disagree with server HTML and force a client rebuild); renders the Classic toggle from `@theme-toggles/react`.
 
 ## Landing (`src/components/landing/`)
 - `Hero` — split layout, manuscript-sheet dropzone (single or multi-file → staged via `handoff.ts` or merged on the import desk), CTA links via `buttonVariants()`.
@@ -25,7 +25,7 @@
 ## Converter (`src/components/converter/`)
 - `FileDropZone` — reusable drag-drop + file input (`accept`, `onFile` / `onFiles` for multi, `label`, `disabled`).
 - `ChapterReview` — expandable chapter list with text preview + char count.
-- `ImportQueue` — multi-file import queue: per-file status (queued → reading → chapters / warnings / failed), `Cancel` while binding, summary once done.
+- `ImportQueue` — multi-file import queue: per-file status (queued → chapters / warnings / failed; parsing shows a spinner with no label), `Cancel` while binding, summary once done.
 
 ## Editor (`src/components/editor/`)
 - `ChapterList` — drag-reorder, delete, add, active highlight.
@@ -36,7 +36,7 @@
 - `AIPanel` — Readability/Translate/Edit tools, config badge, apply/copy result.
 
 ## Reader (`src/components/reader/`)
-- `ReaderRoom` — reading bar (progress, type controls, Library link) + chapter sheet + prev/next nav; owns chapter selection (seeded from the stored bookmark) and mirrors it back to the store so the editor opens where reading stopped.
+- `ReaderRoom` — reading bar (progress, type controls) + chapter sheet + prev/next nav; owns chapter selection (seeded from the stored bookmark) and mirrors it back to the store so the editor opens where reading stopped.
 - `ReaderToc` — contents list with level indentation + active-chapter highlight; rendered as a sticky rail on desktop and inside a dialog drawer on mobile.
 
 ## AI (`src/components/ai/`)

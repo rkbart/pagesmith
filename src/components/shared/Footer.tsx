@@ -4,9 +4,9 @@ import { Feather, Coffee, CodeXml, ShieldCheck } from "lucide-react";
 const productLinks = [
   { href: "/library", label: "Library" },
   { href: "/convert", label: "Import & Convert" },
-  { href: "/editor", label: "Editor" },
+  { href: "/editor", label: "Studio" },
   { href: "/read", label: "Reading Room" },
-  { href: "/check", label: "EPUB Checker" },
+  { href: "/check", label: "Proof Desk" },
   { href: "/settings", label: "Settings" },
 ];
 
