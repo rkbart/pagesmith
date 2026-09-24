@@ -50,7 +50,7 @@ Legacy `{ openaiKey, anthropicKey, model }` payloads are adopted automatically. 
 
 `AIPanel` (`src/components/ai/AIPanel.tsx`) — six tools (Readability / Translate / Edit / Summarize / Detect Chapters / Consistency), run button, result textarea, Copy, Apply to Chapter, Insert as New Chapter, recent results history. Provider badge reads live config.
 
-`DictionaryTooltip` (`src/components/ai/DictionaryTooltip.tsx`) — floating tooltip on word selection in both the reader and editor, powered by DictionaryAPI.dev with AI fallback for multi-word phrases.
+`DictionaryTooltip` (`src/components/ai/DictionaryTooltip.tsx`) — floating tooltip on word selection in both the reader and editor. Uses DictionaryAPI.dev with `localStorage` caching for instant repeat lookups; AI fallback for multi-word phrases.
 
 `/settings` — registry-driven: provider select (local/free badges), dynamic key/model/endpoint fields, per-provider hints, Ollama 3-step layman guide with copy buttons, Test connection with inline result.
 

@@ -22,10 +22,34 @@ interface DictionaryAPIResponse {
   meanings?: { partOfSpeech: string; definitions: { definition: string; example?: string }[] }[];
 }
 
+const CACHE_KEY = "pagesmith-dictionary-cache";
+
+function loadCache(): Record<string, DictionaryResult> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveCache(cache: Record<string, DictionaryResult>) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
+  } catch {}
+}
+
 export async function lookupWord(word: string): Promise<DictionaryResult | null> {
   const cleaned = word.trim().toLowerCase().replace(/[^a-z]/g, "");
   if (!cleaned || cleaned.length < 2) return null;
 
+  // 1. Check localStorage cache (instant for repeated lookups)
+  const cache = loadCache();
+  if (cache[cleaned]) return cache[cleaned];
+
+  // 2. Fall back to DictionaryAPI.dev
   try {
     const res = await fetch(
       `https://api.dictionaryapi.dev/api/v2/entries/en/${cleaned}`
@@ -44,7 +68,9 @@ export async function lookupWord(word: string): Promise<DictionaryResult | null>
       })),
     }));
 
-    return { word: entry.word, phonetic, meanings };
+    const result: DictionaryResult = { word: entry.word, phonetic, meanings };
+    saveCache({ ...cache, [cleaned]: result });
+    return result;
   } catch {
     return null;
   }
