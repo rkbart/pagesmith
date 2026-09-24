@@ -7,6 +7,10 @@ import type {
   EditResult,
   ReadabilityResult,
   Language,
+  SummaryResult,
+  ChapterSummary,
+  ConsistencyResult,
+  ConsistencyFinding,
 } from "@/types/ai";
 import {
   PROVIDERS,
@@ -360,15 +364,28 @@ export async function editChapter(
 }
 
 export async function generateSummary(
-  text: string,
-  chapterTitle: string,
+  chapters: { title: string; content: string; id: string }[],
   config: AIConfig = loadAIConfig()
-): Promise<string> {
+): Promise<SummaryResult> {
   const systemPrompt =
-    "You are a professional book editor. Generate a concise summary of the following chapter (2-3 sentences). Only output the summary.";
-  const userPrompt = `Chapter: ${chapterTitle}\n\n${text.substring(0, 4000)}`;
+    "You are a professional book editor. Generate a summary of the entire book below. Output ONLY a JSON object: {\"chapterSummaries\": [{\"chapterId\": \"id\", \"summary\": \"2-3 sentence summary\"}], \"bookSynopsis\": \"overall book synopsis\"}. Include a summary for each chapter listed and a book synopsis at the end.";
+  const userPrompt = chapters
+    .map((ch) => `## ${ch.title}\n${ch.content.replace(/<[^>]+>/g, " ").substring(0, 4000)}`)
+    .join("\n\n---\n\n");
 
-  return callAI(config, systemPrompt, userPrompt);
+  const result = await callAI(config, systemPrompt, userPrompt);
+  let chapterSummaries: ChapterSummary[];
+  let bookSynopsis: string;
+  try {
+    const parsed = JSON.parse(result);
+    chapterSummaries = parsed.chapterSummaries ?? [];
+    bookSynopsis = parsed.bookSynopsis ?? result;
+  } catch {
+    chapterSummaries = [{ chapterId: "all", summary: result }];
+    bookSynopsis = result;
+  }
+
+  return { chapterSummaries, bookSynopsis };
 }
 
 export async function detectChaptersAI(
@@ -390,15 +407,44 @@ export async function detectChaptersAI(
 export async function analyzeConsistency(
   chapters: { title: string; content: string }[],
   config: AIConfig = loadAIConfig()
-): Promise<string> {
+): Promise<ConsistencyResult> {
   const systemPrompt =
-    "You are a professional book editor. Analyze the following chapters for consistency issues: character names, plot holes, timeline issues, contradictions. Provide a numbered list of findings. Be specific and reference chapter titles.";
+    "You are a professional book editor. Analyze the following chapters for consistency issues: character names, plot holes, timeline issues, contradictions. Output ONLY a JSON array of findings: [{\"type\":\"character\"|\"plot\"|\"timeline\",\"severity\":\"low\"|\"medium\"|\"high\",\"description\":\"...\",\"chapters\":[\"...\"]}]. After the array, add an overall assessment paragraph.";
   const userPrompt = chapters
     .map((ch) => `## ${ch.title}\n${ch.content.replace(/<[^>]+>/g, " ").substring(0, 2000)}`)
     .join("\n\n---\n\n")
     .substring(0, 12000);
 
-  return callAI(config, systemPrompt, userPrompt);
+  const result = await callAI(config, systemPrompt, userPrompt);
+
+  const findings: ConsistencyFinding[] = [];
+  const jsonMatch = result.match(/\[[\s\S]*\]/);
+  if (jsonMatch) {
+    try {
+      const parsed = JSON.parse(jsonMatch[0]);
+      if (Array.isArray(parsed)) {
+        for (const item of parsed) {
+          if (item.type && item.severity && item.description) {
+            findings.push({
+              type: item.type,
+              severity: item.severity,
+              description: item.description,
+              chapters: item.chapters ?? [],
+            });
+          }
+        }
+      }
+    } catch {
+      // Fall through to string-based result
+    }
+  }
+
+  const overall =
+    findings.length > 0
+      ? `Found ${findings.length} consistency issue(s): ${findings.map((f) => `${f.type} (${f.severity})`).join(", ")}.`
+      : "No significant consistency issues detected across chapters.";
+
+  return { findings, overall };
 }
 
 export function calculateReadability(text: string): ReadabilityResult {

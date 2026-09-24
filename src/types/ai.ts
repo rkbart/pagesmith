@@ -111,3 +111,21 @@ export interface ChapterSummary {
   chapterId: string;
   summary: string;
 }
+
+export interface ConsistencyFinding {
+  type: "character" | "plot" | "timeline";
+  severity: "low" | "medium" | "high";
+  description: string;
+  chapters: string[];
+}
+
+export interface ConsistencyResult {
+  findings: ConsistencyFinding[];
+  overall: string;
+}
+
+export interface AnalysisResult {
+  readability: ReadabilityResult;
+  tone: ToneAnalysis;
+  characters: string[];
+}
