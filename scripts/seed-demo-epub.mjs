@@ -46,9 +46,9 @@ async function generateDemoEpub() {
   for (let i = 0; i < CHAPTERS.length; i++) {
     const ch = CHAPTERS[i];
     const fileId = `chap-${i + 1}`;
-    const href = `OEBPS/chapter${i + 1}.xhtml`;
+    const href = `chapter${i + 1}.xhtml`;
     chapterFiles.push({ id: fileId, href, title: ch.title });
-    zip.file(href, generateChapterXhtml(ch.title, ch.content));
+    zip.file(`OEBPS/${href}`, generateChapterXhtml(ch.title, ch.content));
   }
 
   const manifestItems = chapterFiles.map(f =>
@@ -84,7 +84,8 @@ ${spineItems}
 
   const buffer = Buffer.from(await blob.arrayBuffer());
   writeFileSync("demo-book.epub", buffer);
-  console.log("Generated demo-book.epub with 10 chapters at levels 1-3");
+  console.log("Generated demo-book.epub");
+  console.log("Files in zip:", Object.keys(zip.files).filter(f => f.startsWith("OEBPS")).slice(0, 5));
 }
 
 generateDemoEpub().catch(console.error);
