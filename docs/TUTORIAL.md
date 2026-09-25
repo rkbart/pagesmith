@@ -9,7 +9,7 @@
 3. Drop/select the file(s). PageSmith parses them and shows detected chapters;
    multiple files are merged into one book in natural filename order.
 4. Review warnings, expand chapters to preview.
-5. Click **Open in the studio** to edit, or **Bind another file** / **Start over** to import more. Single-file PDF imports also download the finished EPUB automatically.
+5. Click **Open in the Forge** to edit, or **Bind another file** / **Start over** to import more. Single-file PDF imports also download the finished EPUB automatically.
 
 ## 1b. Manage your books
 
@@ -22,12 +22,10 @@ On `/library` every book sits on a shelf, newest first:
   the header — the choice is remembered on this device.
 - The shelf pages itself (12 cards or 10 rows per page); new searches
   always start back on page one.
-- **Read** opens the reading room (it resumes the page you stopped on),
-  **Edit** opens the studio, the trash icon deletes (with confirmation).
+-   **Read** opens the reading room (it resumes the page you stopped on),
+  **Edit** opens the Forge, the trash icon deletes (with confirmation).
 - **Import EPUB** (next to the layout toggle) parses an `.epub` straight onto
   the shelf and opens it in the reading room.
-- There's deliberately no blank-book button: books enter the shelf only
-  through an import (manuscript or EPUB), so empty projects never pile up.
 
 ## 2. Edit your book
 
@@ -67,4 +65,7 @@ Go to `/check`, drop the exported EPUB → see errors/warnings/info.
 
 ## 7. Start from scratch
 
-`/editor` → **New Book** (no file needed). Add chapters manually and export.
+Go to `/editor` — the Forge opens empty. Click "Browse your stockpile" to pick
+an existing book, or expand the "Create a blank book" card, fill in title,
+author, subtitle, and language, and hit **Create & open the Forge**. Add
+chapters manually and export.

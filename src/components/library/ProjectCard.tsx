@@ -34,7 +34,7 @@ export function ProjectCard({
 
   return (
     <article className="group flex flex-row overflow-hidden rounded-xl border bg-card shadow-panel transition-all hover:-translate-y-0.5 hover:border-brass/40 hover:shadow-lift sm:flex-col">
-      {/* The cover doubles as the primary "open in the studio" affordance. */}
+      {/* The cover doubles as the primary "open in the Forge" affordance. */}
       <button
         type="button"
         onClick={() => onOpen(project.id)}

@@ -55,7 +55,7 @@ export default function ConvertFormatPage({
               setAutoExport(filename);
             }
           } catch {
-            setAutoExport("EPUB export failed — your book is still in the studio, export it from the editor.");
+            setAutoExport("EPUB export failed — your book is still in the Forge, export it from the editor.");
           }
         }
       } catch {
@@ -150,7 +150,7 @@ export default function ConvertFormatPage({
                 <p className="text-sm">
                   Your EPUB converted automatically and downloaded as{" "}
                   <span className="font-medium">{autoExport}</span> — it&apos;s
-                  also waiting for you in the studio.
+                  also waiting for you in the Forge.
                 </p>
               </div>
             )}
@@ -159,7 +159,7 @@ export default function ConvertFormatPage({
 
           <div className="flex flex-col gap-3 sm:flex-row">
             <Link href="/editor" className={buttonVariants({ variant: "brass", size: "lg" })}>
-              Open in the studio <ArrowRight className="ml-2 h-4 w-4" />
+              Open in the Forge <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
             <Button variant="outline" size="lg" onClick={reset}>
               Bind another file

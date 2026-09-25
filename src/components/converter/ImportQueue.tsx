@@ -119,7 +119,7 @@ export function ImportQueue({
               disabled={boundChapters === 0}
               className="w-full sm:w-auto"
             >
-              Open in the studio
+              Open in the Forge
             </Button>
             <Button variant="outline" onClick={onReset} className="w-full sm:w-auto">
               Start over

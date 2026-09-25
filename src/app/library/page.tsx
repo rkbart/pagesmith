@@ -417,6 +417,7 @@ function LibraryPageInner() {
     >
       <div className="mb-10 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
+          <p className="eyebrow mb-2">The Stockpile</p>
           <h1 className="heading-lg">Library</h1>
           <p className="body-md-loose mt-2 text-muted-foreground">
             {shelf.length} book{shelf.length === 1 ? "" : "s"} · {totalChapters}{" "}

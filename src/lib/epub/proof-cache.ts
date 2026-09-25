@@ -4,7 +4,7 @@ import type { ValidationResult } from "@/types/epub";
  * In-memory proof cache for the Proof Desk (`/check`).
  *
  * Deliberately NOT sessionStorage/localStorage: the proof survives
- * client-side navigation (e.g. Studio -> back to Proof Desk) because the
+ * client-side navigation (e.g. Forge -> back to Proof Desk) because the
  * module stays loaded, but a full page refresh drops it — which is the
  * desired "clear on refresh" behaviour. A refreshed page can't re-read the
  * original on-disk file anyway, so a restored proof would be unverifiable.
@@ -16,7 +16,7 @@ export interface CachedProof {
   projectId: string | null;
   timestamp: number;
   /**
-   * The exact bytes that were proofed. The Studio rebuild normalizes a
+   * The exact bytes that were proofed. The Forge rebuild normalizes a
    * book (stored-first mimetype, complete manifest, repaired XHTML), so
    * re-validating a rebuild can never reproduce the original file's
    * faults. While the book is unedited, re-proof against these bytes.
@@ -39,7 +39,7 @@ export function clearCachedProof(): void {
 }
 
 /**
- * One-shot handoff for "send this book to the Proof Desk" from the Studio.
+ * One-shot handoff for "send this book to the Proof Desk" from the Forge.
  * Carries the EPUB bytes plus the shelved project they belong to, so the
  * Proof Desk proofs without re-shelving a duplicate. In-memory, so a
  * refresh clears it like everything else here.
@@ -71,7 +71,7 @@ export function takePendingCheckFile(): PendingCheck | null {
 export function originalFileIfUnedited(projectId: string, updatedAt: number): File | null {
   const proof = cached;
   if (!proof || proof.projectId !== projectId || !proof.originalFile) return null;
-  // Any Studio edit bumps updatedAt past the proof timestamp.
+  // Any Forge edit bumps updatedAt past the proof timestamp.
   if (updatedAt > proof.timestamp) return null;
   return proof.originalFile;
 }
@@ -79,7 +79,7 @@ export function originalFileIfUnedited(projectId: string, updatedAt: number): Fi
 /**
  * Per-book persistent proof slot (sessionStorage, keyed by project id).
  *
- * This is what keeps the Studio banner alive across a refresh: the
+ * This is what keeps the Forge banner alive across a refresh: the
  * in-memory cache above is gone after reload, but the tab session still
  * holds the findings for each proofed book. Dismissing the banner clears
  * the slot, so it never comes back uninvited. The Proof Desk itself never

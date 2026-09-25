@@ -1,7 +1,7 @@
 # Components
 
 ## Shared
-- `Header` — sticky nav (Library, Import, Proof Desk, Studio, Settings), mobile menu, theme toggle.
+- `Header` — sticky nav (Library, Import, Proof Desk, Forge, Settings), mobile menu, theme toggle.
 - `Footer` — tagline, privacy note, Buy Me a Coffee link, Email row (`CONTACT_EMAIL`, blank until set), GitHub profile link.
 - `ThemeToggle` — reads the theme from `<html class="dark">` via `useSyncExternalStore` (the boot script in the root layout owns the class pre-paint, so a `useState` initializer would disagree with server HTML and force a client rebuild); renders the Classic toggle from `@theme-toggles/react`.
 
@@ -15,7 +15,7 @@
 
 ## Library (`src/components/library/`)
 - `CoverArt` — real cover, or a monogram placeholder (serif initial, brass rules) so the book title prints exactly once per shelf item (as the heading).
-- `ProjectCard` — card-shelf item: cover button (opens the studio), heading + author/updated line, collection picker, Read / Edit / Delete actions.
+- `ProjectCard` — card-shelf item: cover button (opens the Forge), heading + author/updated line, collection picker, Read / Edit / Delete actions.
 - `ProjectRow` — dense list-shelf row: thumb, title/meta line, collection picker (`md+`), icon-only Read / Edit / Delete on mobile (labeled on `sm+`).
 - `CollectionCard` — folder on the overview grid: member cover mosaic, name, counts, freshness; click drills into `?collection=<id>`.
 - `CollectionSelect` — file-a-book picker (Unsorted + collections); resolves its own trigger label so a stale id never renders, truncates long names with `title` tooltips.

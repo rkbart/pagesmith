@@ -10,7 +10,7 @@ const navLinks = [
   { href: "/library", label: "Library" },
   { href: "/convert", label: "Import" },
   { href: "/check", label: "Proof Desk" },
-  { href: "/editor", label: "Studio" },
+  { href: "/editor", label: "Forge" },
   { href: "/settings", label: "Settings" },
 ];
 

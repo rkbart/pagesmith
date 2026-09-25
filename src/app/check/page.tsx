@@ -155,8 +155,8 @@ export default function CheckPage() {
       const validation = await validateEpub(file);
       setResult(validation);
 
-      // Shelve a copy in the library so "Open Studio" opens this exact
-      // book — unless this came from the Studio's Proof button, whose
+      // Shelve a copy in the library so "Open Forge" opens this exact
+      // book — unless this came from the Forge's Proof button, whose
       // book is already shelved and autosaved (re-shelving would just
       // stack up duplicates). A broken archive can still proof but may
       // have nothing readable to shelve — the proof stays regardless.
@@ -199,7 +199,7 @@ export default function CheckPage() {
       setProofTimestamp(timestamp);
       setImportedProjectId(projectId);
       setCachedProof({ result: validation, fileName: file.name, projectId, timestamp, originalFile: file });
-      // Persist per book so the Studio banner survives a refresh. The
+      // Persist per book so the Forge banner survives a refresh. The
       // Proof Desk itself never reads this back — a refresh starts empty.
       if (projectId) saveProofForProject(projectId, validation, file.name);
     } catch (err) {
@@ -209,7 +209,7 @@ export default function CheckPage() {
     }
   }, []);
 
-  // Handoff from the Studio's "send to Proof Desk": EPUB bytes plus the
+  // Handoff from the Forge's "send to Proof Desk": EPUB bytes plus the
   // shelved project they belong to, proofed like a fresh drop.
   useEffect(() => {
     const pending = takePendingCheckFile();
@@ -338,6 +338,7 @@ export default function CheckPage() {
   return (
     <div className="container mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
       <header className="mb-10 text-center">
+        <p className="eyebrow mb-2">Appraisal</p>
         <h1 className="heading-lg">The Proof Desk</h1>
         <p className="body-md-loose mx-auto mt-3 max-w-2xl text-muted-foreground">
           Every book gets a proof before it is printed. Drop your EPUB here and
@@ -524,7 +525,7 @@ export default function CheckPage() {
               )}
               {importedProjectId && (
                 <span className="text-xs text-muted-foreground">
-                  Shelved in your library — Studio opens this copy.
+                  Shelved in your library — Forge opens this copy.
                 </span>
               )}
               <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
@@ -534,7 +535,7 @@ export default function CheckPage() {
                 className={buttonVariants({ variant: "brass", size: "sm" })}
                 onClick={goToEditor}
               >
-                Open Studio to fix issues
+                Open Forge to fix issues
               </button>
             </div>
           </div>

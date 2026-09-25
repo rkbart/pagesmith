@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useProjectStore } from "@/lib/store/project";
 import { useProjectHydrated } from "@/hooks/useHydrated";
@@ -11,9 +11,9 @@ import { CoverUpload } from "@/components/editor/CoverUpload";
 import { MetadataForm } from "@/components/editor/MetadataForm";
 import { ExportBar } from "@/components/editor/ExportBar";
 import { BackToTop } from "@/components/shared/BackToTop";
+import { Separator } from "@/components/ui/separator";
 import { AIPanel } from "@/components/ai/AIPanel";
-import { buttonVariants } from "@/components/ui/button";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { buildEpub } from "@/lib/epub/generate";
 import { validateEpub } from "@/lib/epub/validate";
@@ -27,6 +27,7 @@ import {
   setCachedProof,
 } from "@/lib/epub/proof-cache";
 import type { ValidationIssue } from "@/types/epub";
+
 import {
   Plus,
   Library,
@@ -36,18 +37,135 @@ import {
   Sparkles,
   X,
   AlertTriangle,
-  ArrowLeft,
   ChevronDown,
   RotateCw,
 } from "lucide-react";
+
+const LANGUAGES = [
+  { value: "en", label: "English" },
+  { value: "es", label: "Spanish" },
+  { value: "fr", label: "French" },
+  { value: "de", label: "German" },
+  { value: "it", label: "Italian" },
+  { value: "pt", label: "Portuguese" },
+  { value: "nl", label: "Dutch" },
+  { value: "ru", label: "Russian" },
+  { value: "ja", label: "Japanese" },
+  { value: "ko", label: "Korean" },
+  { value: "zh", label: "Chinese" },
+  { value: "ar", label: "Arabic" },
+  { value: "hi", label: "Hindi" },
+  { value: "tr", label: "Turkish" },
+];
+
+function NewBookCard() {
+  const router = useRouter();
+  const { createProject, setMetadata, shelveProject } = useProjectStore();
+  const [title, setTitle] = useState("");
+  const [author, setAuthor] = useState("");
+  const [subtitle, setSubtitle] = useState("");
+  const [language, setLanguage] = useState("en");
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const name = title.trim() || "Untitled";
+    createProject(name);
+    setMetadata({
+      title: title.trim() || name,
+      author: author.trim(),
+      subtitle: subtitle.trim() || undefined,
+      language,
+    });
+    shelveProject();
+    setTitle("");
+    setAuthor("");
+    setSubtitle("");
+    setLanguage("en");
+    router.push("/editor");
+  }
+
+  return (
+    <Card className="p-5">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <p className="body-sm text-muted-foreground">
+          Create a blank book and fill in the details below. You can always refine them later.
+        </p>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="new-book-title" className="mb-1 flex items-center gap-1.5 text-sm font-medium">
+              <Feather className="size-3.5 text-brass" aria-hidden="true" />
+              Title <span className="text-destructive">*</span>
+            </label>
+            <input
+              id="new-book-title"
+              type="text"
+              required
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. The Great Gatsby"
+              className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+          <div>
+            <label htmlFor="new-book-author" className="mb-1 flex items-center gap-1.5 text-sm font-medium">
+              <Feather className="size-3.5 text-brass" aria-hidden="true" />
+              Author
+            </label>
+            <input
+              id="new-book-author"
+              type="text"
+              value={author}
+              onChange={(e) => setAuthor(e.target.value)}
+              placeholder="e.g. F. Scott Fitzgerald"
+              className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="new-book-subtitle" className="mb-1 block text-sm font-medium">
+              Subtitle
+            </label>
+            <input
+              id="new-book-subtitle"
+              type="text"
+              value={subtitle}
+              onChange={(e) => setSubtitle(e.target.value)}
+              placeholder="Optional subtitle"
+              className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+          <div>
+            <label htmlFor="new-book-language" className="mb-1 block text-sm font-medium">
+              Language
+            </label>
+            <select
+              id="new-book-language"
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
+              className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+            >
+              {LANGUAGES.map((l) => (
+                <option key={l.value} value={l.value}>{l.label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div className="flex justify-end pt-1">
+          <Button type="submit" variant="brass">
+            <Plus className="mr-2 h-4 w-4" /> Create &amp; open the Forge
+          </Button>
+        </div>
+      </form>
+    </Card>
+  );
+}
 
 function EditorContent() {
   const searchParams = useSearchParams();
   const {
     project,
-    projects,
     activeChapterId,
-    loadProject,
   } = useProjectStore();
   // Chapters live in a slide hide/reveal panel on the left (drawer on
   // mobile, collapsing sidebar on desktop).
@@ -211,40 +329,52 @@ function EditorContent() {
   // always runs against restored data.
   const hydrated = useProjectHydrated();
 
-  useEffect(() => {
-    if (!project && projects.length > 0) {
-      const mostRecent = [...projects].sort((a, b) => b.updatedAt - a.updatedAt)[0];
-      loadProject(mostRecent.id);
-    }
-  }, [project, projects, loadProject]);
+  // Forge starts empty on every visit — no auto-loading the most recent book.
+  // Users pick what to open from the library or the empty-state CTA.
 
   if (!hydrated) {
     return (
       <div className="container flex items-center justify-center gap-2 py-32 text-muted-foreground">
         <Loader2 className="size-5 animate-spin text-brass" aria-hidden="true" />
-        Opening the bindery…
+        Opening the Forge…
       </div>
     );
   }
 
   if (!project) {
     return (
-      <div className="container mx-auto max-w-lg px-4 py-20 text-center sm:px-6">
-        <div className="mx-auto mb-6 grid size-16 place-items-center rounded-2xl bg-brass/10 shadow-panel">
-          <Feather className="size-7 text-brass" aria-hidden="true" />
+      <div className="container mx-auto max-w-lg px-4 py-20 sm:px-6">
+        <div className="mb-10 text-center">
+          <div className="mx-auto mb-6 grid size-16 place-items-center rounded-2xl bg-brass/10 shadow-panel">
+            <Feather className="size-7 text-brass" aria-hidden="true" />
+          </div>
+          <p className="eyebrow mb-2">The Writing Forge</p>
+          <h1 className="heading-lg mb-3">Forge</h1>
+          <p className="body-md-loose text-muted-foreground">
+            Shape raw manuscripts into finished books.
+          </p>
         </div>
-        <h1 className="heading-lg mb-3">The bench is clear</h1>
-        <p className="body-md-loose text-muted-foreground mb-8">
-          Bring in a manuscript or an EPUB to start binding.
-        </p>
-        <div className="flex flex-col justify-center gap-3 sm:flex-row">
-          <Link href="/convert" className={buttonVariants({ variant: "brass", size: "lg" })}>
-            <Plus className="mr-2 h-4 w-4" /> Import a manuscript
+
+        {/* Browse stockpile card */}
+        <Card className="p-5 text-center">
+          <p className="font-heading text-sm mb-1">Pick up where you left off</p>
+          <p className="body-sm text-muted-foreground mb-4">
+            Open an existing book from your collection to keep editing.
+          </p>
+          <Link href="/library" className={buttonVariants({ variant: "outline" })}>
+            <Library className="mr-2 h-4 w-4" aria-hidden="true" /> Browse your stockpile
           </Link>
-          <Link href="/library" className={buttonVariants({ variant: "outline", size: "lg" })}>
-            <Library className="mr-2 h-4 w-4" aria-hidden="true" /> Browse your library
-          </Link>
+        </Card>
+
+        {/* Divider */}
+        <div className="my-6 flex items-center gap-4">
+          <Separator className="flex-1" />
+          <span className="eyebrow text-muted-foreground text-xs">or</span>
+          <Separator className="flex-1" />
         </div>
+
+        {/* New book card */}
+        <NewBookCard />
       </div>
     );
   }
@@ -562,7 +692,7 @@ export default function EditorPage() {
     <Suspense
       fallback={
         <div className="container py-16 text-center">
-          <p className="font-heading mt-4 text-lg">Opening the studio…</p>
+          <p className="font-heading mt-4 text-lg">Opening the Forge…</p>
         </div>
       }
     >

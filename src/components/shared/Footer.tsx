@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Feather, Mail, Coffee, ShieldCheck } from "lucide-react";
 
 /** Contact address for the footer's "Email me" row — blank until set. */
-const CONTACT_EMAIL = "";
+const CONTACT_EMAIL = "rk_bart@yahoo.com";
 
 /** GitHub mark (lucide no longer ships brand icons). */
 function GithubMark({ className }: { className?: string }) {
@@ -16,7 +16,7 @@ function GithubMark({ className }: { className?: string }) {
 const productLinks = [
   { href: "/library", label: "Library" },
   { href: "/convert", label: "Import & Convert" },
-  { href: "/editor", label: "Studio" },
+  { href: "/editor", label: "Forge" },
   { href: "/read", label: "Reading Room" },
   { href: "/check", label: "Proof Desk" },
   { href: "/settings", label: "Settings" },

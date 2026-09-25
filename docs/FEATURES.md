@@ -49,9 +49,10 @@ Failed files are skipped and reported per row.
   collapse); the parser's embedded title can't clobber the deduped name on
   import (`importChapters` re-checks); same rule for collection names
   (`uniqueName` in `src/lib/utils/naming.ts`)
-- No blank books: there is no "New book" action — the shelf only holds books
-  that came from an import, and the empty state routes to the import desk or
-  the EPUB picker
+- Editor empty state: the Forge starts empty on every visit. Two cards offer
+  next steps — "Browse your stockpile" links to the library, and "Create a
+  blank book" presents title, author, subtitle, and language fields before
+  opening the Forge
 
 ## Editor
 
@@ -63,7 +64,7 @@ Failed files are skipped and reported per row.
 - Cover upload (base64 data URL)
 - Auto TOC rebuild on every chapter change
 - Multi-project support, persisted to IndexedDB (`pagesmith-db`)
-- Studio proof banner: books arriving from the Proof Desk show their findings inline (collapsible, each with a fix), persist across refresh per book until dismissed, and can be re-proofed in place — the original dropped bytes are re-validated while the book is unedited, the current build once edited
+- Forge proof banner: books arriving from the Proof Desk show their findings inline (collapsible, each with a fix), persist across refresh per book until dismissed, and can be re-proofed in place — the original dropped bytes are re-validated while the book is unedited, the current build once edited
 - Export bar "Proof" button builds the open book to EPUB in memory and sends it to the Proof Desk without re-shelving a duplicate
 
 ## Reading Room (`/read`)
@@ -88,7 +89,7 @@ plain-language "How to fix". Filter findings by severity (all / errors
 / warnings / info), copy or download a plain-text proof report (fixes
 included), and read the six-station cards and proof marks guide.
 Dropping a file also shelves a copy in the library (duplicate
-titles get ` (1)`, ` (2)`, … suffixes) so "Open Studio to fix issues"
+titles get ` (1)`, ` (2)`, … suffixes) so "Open Forge to fix issues"
 opens that exact book; the proof survives back-navigation but a refresh
 starts empty. Files are never uploaded.
 
