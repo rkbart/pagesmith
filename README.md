@@ -51,3 +51,4 @@ If PageSmith helps you publish: [Buy Me a Coffee](https://www.buymeacoffee.com/r
 ## Privacy
 
 Files never leave your device. API keys (optional) are stored in your browser's localStorage only.
+
