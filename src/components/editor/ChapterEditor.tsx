@@ -215,6 +215,7 @@ export function ChapterEditor({ chapter }: { chapter: Chapter }) {
         <button
           type="button"
           title="Undo"
+          aria-label="Undo"
           onClick={() => undoChapter(chapter.id)}
           className="h-8 w-8 rounded text-sm hover:bg-muted grid place-items-center"
         >
@@ -223,6 +224,7 @@ export function ChapterEditor({ chapter }: { chapter: Chapter }) {
         <button
           type="button"
           title="Redo"
+          aria-label="Redo"
           onClick={() => redoChapter(chapter.id)}
           className="h-8 w-8 rounded text-sm hover:bg-muted grid place-items-center"
         >
@@ -236,6 +238,7 @@ export function ChapterEditor({ chapter }: { chapter: Chapter }) {
             key={btn.command}
             type="button"
             title={btn.title}
+            aria-label={btn.title}
             onClick={() => execCommand(btn.command)}
             className={`h-8 w-8 rounded text-sm hover:bg-muted ${btn.style}`}
           >
@@ -331,6 +334,7 @@ export function ChapterEditor({ chapter }: { chapter: Chapter }) {
           onClick={() => execCommand("insertHorizontalRule")}
           className="h-8 px-2 rounded text-sm hover:bg-muted"
           title="Horizontal rule"
+          aria-label="Horizontal rule"
         >
           —
         </button>
@@ -339,6 +343,7 @@ export function ChapterEditor({ chapter }: { chapter: Chapter }) {
           onClick={() => execCommand("insertUnorderedList")}
           className="h-8 px-2 rounded text-sm hover:bg-muted"
           title="Bullet list"
+          aria-label="Bullet list"
         >
           • List
         </button>
@@ -347,6 +352,7 @@ export function ChapterEditor({ chapter }: { chapter: Chapter }) {
           onClick={() => execCommand("insertOrderedList")}
           className="h-8 px-2 rounded text-sm hover:bg-muted"
           title="Numbered list"
+          aria-label="Numbered list"
         >
           1. List
         </button>

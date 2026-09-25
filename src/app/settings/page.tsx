@@ -167,9 +167,10 @@ export default function SettingsPage() {
                   <Input
                     id="provider-key"
                     type={showKey ? "text" : "password"}
+                    autoComplete="off"
                     value={key}
                     onChange={(e) => setKey(e.target.value)}
-                    placeholder={def.keyPlaceholder ?? "paste key…"}
+                    placeholder={def.keyPlaceholder ?? "paste key..."}
                   />
                   <button
                     type="button"
@@ -260,6 +261,7 @@ export default function SettingsPage() {
                     value={baseURL}
                     onChange={(e) => setBaseURL(e.target.value)}
                     placeholder={def.baseURL}
+                    autoComplete="off"
                   />
                   <p className="text-xs text-muted-foreground">
                     Blank = default ({def.baseURL}). Only change this if your
@@ -276,7 +278,8 @@ export default function SettingsPage() {
                   id="provider-endpoint"
                   value={baseURL}
                   onChange={(e) => setBaseURL(e.target.value)}
-                  placeholder="https://…/v1"
+                  placeholder="https://.../v1"
+                  autoComplete="off"
                 />
                 <p className="text-xs text-muted-foreground">
                   Any OpenAI-compatible server (vLLM, text-generation-webui,

@@ -43,3 +43,9 @@ next-env.d.ts
 # pdf.js worker bundle (copied from node_modules by sync:pdf-worker;
 # served locally from /public so PDF parsing works offline & version-pinned)
 /public/pdf.worker.min.mjs
+
+# AI / skills tooling (not part of the app)
+/.opencode/
+/.claude/
+/.agents/
+.graphify-out/

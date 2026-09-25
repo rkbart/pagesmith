@@ -389,6 +389,7 @@ export function ReaderRoom({ project }: { project: Project }) {
             size="sm"
             className="lg:hidden"
             onClick={() => setTocOpen(true)}
+            aria-label="Open table of contents"
           >
             <List />
             <span className="hidden sm:inline">Contents</span>

@@ -60,6 +60,8 @@ export function CoverUpload() {
         <img
           src={project.cover.data}
           alt="Book cover"
+          width={64}
+          height={96}
           className="h-20 w-14 shrink-0 rounded-lg border object-cover sm:h-24 sm:w-16"
         />
       ) : (

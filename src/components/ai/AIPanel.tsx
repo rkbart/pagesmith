@@ -277,7 +277,16 @@ export function AIPanel() {
             <div
               key={i}
               className="flex items-start gap-2 rounded border p-2 hover:bg-muted/50 cursor-pointer transition-colors"
+              role="button"
+              tabIndex={0}
+              aria-label={`Restore ${TOOL_LABELS[entry.tool]} result`}
               onClick={() => restoreFromHistory(entry)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  restoreFromHistory(entry);
+                }
+              }}
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1">

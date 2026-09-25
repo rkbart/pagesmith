@@ -100,10 +100,11 @@ function NewBookCard() {
               id="new-book-title"
               type="text"
               required
+              autoComplete="off"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. The Great Gatsby"
-              className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+              placeholder="e.g. The Great Gatsby..."
+              className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
           </div>
           <div>
@@ -114,10 +115,11 @@ function NewBookCard() {
             <input
               id="new-book-author"
               type="text"
+              autoComplete="off"
               value={author}
               onChange={(e) => setAuthor(e.target.value)}
-              placeholder="e.g. F. Scott Fitzgerald"
-              className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+              placeholder="e.g. F. Scott Fitzgerald..."
+              className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
           </div>
         </div>
@@ -129,10 +131,11 @@ function NewBookCard() {
             <input
               id="new-book-subtitle"
               type="text"
+              autoComplete="off"
               value={subtitle}
               onChange={(e) => setSubtitle(e.target.value)}
-              placeholder="Optional subtitle"
-              className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+              placeholder="Optional subtitle..."
+              className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
           </div>
           <div>
@@ -143,7 +146,7 @@ function NewBookCard() {
               id="new-book-language"
               value={language}
               onChange={(e) => setLanguage(e.target.value)}
-              className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+              className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring dark:bg-input/30"
             >
               {LANGUAGES.map((l) => (
                 <option key={l.value} value={l.value}>{l.label}</option>
