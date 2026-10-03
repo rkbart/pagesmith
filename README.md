@@ -1,8 +1,8 @@
-# PageSmith
+# PageSmith — Forge your books in the browser
 
-**Free, browser-first EPUB creator and editor with AI tools.**
+Convert, edit, and publish valid EPUB 3 ebooks without leaving your device. 6-format import with smart chapter detection, multi-chapter rich-text editor, library + reading room, structural Proof Desk validator, and hybrid AI (offline readability + BYOK translation/edit/summarize). Next.js 16 / React 19 / Zustand / IndexedDB. No backend, no tracking, no paywall.
 
-Convert PDF, DOCX, Markdown, HTML, TXT, and EPUB into clean, structured ebooks. Edit chapters, translate, polish, preview, validate, and export — all running locally in your browser. No account, no upload, no server.
+`nextjs` `react` `typescript` `epub` `ebooks` `pdf` `privacy` `local-first` `ai` `byok` `jszip` `tailwindcss` `shadcn-ui`
 
 ## Quick start
 
